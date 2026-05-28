@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HRC Strategy Setup</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Wall Assembly Mission</p>
+          <h1>Build the human-robot crew before the shift starts.</h1>
+        </div>
+        <div class="topbar-actions">
+          <div class="mode-toggle" id="mode-toggle"></div>
+          <div class="topbar-stats" id="topbar-stats"></div>
+        </div>
+      </header>
+
+      <section class="panel setup-panel hidden" id="setup-panel">
+        <div class="panel-head">
+          <p class="panel-kicker">Setup Mode</p>
+          <h2>Configure Values, Crew, Weights, and Reward</h2>
+        </div>
+        <div class="setup-actions">
+          <button id="save-setup" class="button primary">Save Setup</button>
+          <button id="reset-setup-config" class="button ghost">Reset Config</button>
+        </div>
+        <div id="setup-editor" class="setup-editor"></div>
+      </section>
+
+      <main class="workspace">
+        <section class="panel strategy-panel">
+          <div class="panel-head">
+            <p class="panel-kicker">Step 1</p>
+            <h2>Choose Strategy</h2>
+          </div>
+          <div id="strategy-list" class="strategy-list strategy-list-horizontal"></div>
+        </section>
+
+        <div class="main-columns">
+          <div class="primary-stack">
+            <section class="panel roster-panel">
+              <div class="panel-head">
+                <p class="panel-kicker">Crew View</p>
+                <h2>Available Crew</h2>
+              </div>
+              <div id="worker-pool" class="worker-pool"></div>
+            </section>
+
+            <section class="panel board-panel">
+              <div class="panel-head panel-head-inline">
+                <p class="panel-kicker">Step 2</p>
+                <div class="panel-head-row">
+                  <h2>Cover Every Task</h2>
+                  <div class="board-legend board-legend-inline">
+                    <span class="legend-chip">Task sockets accept one crew unit</span>
+                    <span class="legend-chip">Multi-task robots span adjacent sockets</span>
+                    <span class="legend-chip">Human-only sockets require Skilled Installer</span>
+                  </div>
+                </div>
+              </div>
+              <div id="task-board" class="task-board"></div>
+              <div class="simulation-actions">
+                <button id="run-simulation" class="button primary">Run Simulation</button>
+                <button id="reset-simulation" class="button ghost">Reset Flow</button>
+              </div>
+              <div id="simulation-board" class="simulation-board"></div>
+            </section>
+
+            <section class="panel compare-panel">
+              <div class="panel-head">
+                <p class="panel-kicker">Variants</p>
+                <h2>Save and Compare Setups</h2>
+              </div>
+              <div class="compare-actions">
+                <button id="save-variant" class="button primary">Save Current Variant</button>
+                <button id="reset-setup" class="button ghost">Reset Setup</button>
+              </div>
+              <div id="variant-list" class="variant-list"></div>
+            </section>
+          </div>
+
+          <aside class="floating-outcomes">
+            <section class="panel outcomes-panel">
+              <div class="panel-head">
+                <p class="panel-kicker">Step 3</p>
+                <h2>Review Outcome</h2>
+              </div>
+              <div id="outcome-panel"></div>
+            </section>
+          </aside>
+        </div>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
