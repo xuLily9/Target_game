@@ -28,7 +28,7 @@
       <section class="panel setup-panel hidden" id="setup-panel">
         <div class="panel-head">
           <p class="panel-kicker">Setup Mode</p>
-          <h2>Configure Values, Crew, Weights, and Reward</h2>
+          <h2 id="setup-panel-title">Configure Values, Crew, Weights, and Reward</h2>
         </div>
         <div class="setup-actions">
           <button id="save-setup" class="button primary">Save Setup</button>
@@ -40,8 +40,8 @@
       <main class="workspace">
         <section class="panel strategy-panel">
           <div class="panel-head">
-            <p class="panel-kicker">Step 1</p>
-            <h2>Choose Strategy</h2>
+            <p class="panel-kicker" id="step1-kicker">Step 1</p>
+            <h2 id="step1-title">Choose Strategy</h2>
           </div>
           <div id="strategy-list" class="strategy-list strategy-list-horizontal"></div>
         </section>
@@ -50,21 +50,21 @@
           <div class="primary-stack">
             <section class="panel roster-panel">
               <div class="panel-head">
-                <p class="panel-kicker">Crew View</p>
-                <h2>Available Crew</h2>
+                <p class="panel-kicker" id="crew-kicker">Crew View</p>
+                <h2 id="crew-title">Available Crew</h2>
               </div>
               <div id="worker-pool" class="worker-pool"></div>
             </section>
 
             <section class="panel board-panel">
               <div class="panel-head panel-head-inline">
-                <p class="panel-kicker">Step 2</p>
+                <p class="panel-kicker" id="step2-kicker">Step 2</p>
                 <div class="panel-head-row">
-                  <h2>Cover Every Task</h2>
+                  <h2 id="step2-title">Cover Every Task</h2>
                   <div class="board-legend board-legend-inline">
-                    <span class="legend-chip">Task sockets accept one crew unit</span>
-                    <span class="legend-chip">Multi-task robots span adjacent sockets</span>
-                    <span class="legend-chip">Human-only sockets require Skilled Installer</span>
+                    <span class="legend-chip" id="legend-1">Task sockets accept one crew unit</span>
+                    <span class="legend-chip" id="legend-2">Multi-task robots span adjacent sockets</span>
+                    <span class="legend-chip" id="legend-3">Human-only sockets require Skilled Installer</span>
                   </div>
                 </div>
               </div>
@@ -78,8 +78,8 @@
 
             <section class="panel compare-panel">
               <div class="panel-head">
-                <p class="panel-kicker">Variants</p>
-                <h2>Save and Compare Setups</h2>
+                <p class="panel-kicker" id="variants-kicker">Variants</p>
+                <h2 id="variants-title">Save and Compare Setups</h2>
               </div>
               <div class="compare-actions">
                 <button id="save-variant" class="button primary">Save Current Variant</button>
@@ -92,8 +92,8 @@
           <aside class="floating-outcomes">
             <section class="panel outcomes-panel">
               <div class="panel-head">
-                <p class="panel-kicker">Step 3</p>
-                <h2>Review Outcome</h2>
+                <p class="panel-kicker" id="step3-kicker">Step 3</p>
+                <h2 id="step3-title">Review Outcome</h2>
               </div>
               <div id="outcome-panel"></div>
             </section>

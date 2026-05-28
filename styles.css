@@ -166,6 +166,7 @@ body {
 
 .setup-inline-fields label,
 .setup-card-values label,
+.setup-name-field,
 .setup-tag-input,
 .setup-badge-input {
   display: grid;
@@ -174,9 +175,29 @@ body {
   color: var(--muted);
 }
 
+.setup-name-field {
+  min-width: 120px;
+}
+
+.strategy-card .setup-name-field {
+  flex: 1;
+}
+
+.setup-card .strategy-title {
+  align-items: start;
+  flex-wrap: wrap;
+}
+
+.worker-name.setup-name-field {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-right: 0;
+}
+
 .setup-card-values {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 6px;
   margin-top: 8px;
 }
@@ -187,25 +208,80 @@ body {
   margin-top: 8px;
 }
 
+.setup-tag-input {
+  width: 72px;
+}
+
+.setup-badge-input {
+  width: 72px;
+}
+
+.worker-card.setup-card {
+  min-height: 0;
+  padding: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.setup-card-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 84px;
+  gap: 8px;
+  align-items: start;
+}
+
+.worker-card.setup-card .worker-name {
+  padding-right: 0;
+  margin-bottom: 0;
+}
+
+.worker-card.setup-card .setup-tag-input,
+.worker-card.setup-card .setup-badge-input {
+  width: 100%;
+}
+
+.worker-card.setup-card .setup-tag-input {
+  position: static;
+}
+
+.worker-card.setup-card .mini-bars {
+  padding-bottom: 0;
+}
+
+.worker-card.setup-card .setup-name-field span {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.setup-inline-fields,
+.setup-card-values {
+  align-items: start;
+}
+
+.setup-inline-fields label,
+.setup-card-values label,
+.setup-name-field,
 .setup-tag-input,
 .setup-badge-input {
-  position: absolute;
+  min-width: 0;
 }
 
-.setup-tag-input {
-  top: 8px;
-  right: 8px;
-  width: 52px;
+.worker-card.setup-card .setup-quantity-row {
+  justify-content: stretch;
 }
 
-.setup-badge-input {
-  right: 8px;
-  bottom: 8px;
-  width: 52px;
-}
-
-.setup-quantity-row .setup-badge-input {
+.worker-card.setup-card .setup-badge-input {
   position: static;
+  width: 84px;
+  margin-left: auto;
+}
+
+.worker-card.setup-card .setup-badge-input input,
+.worker-card.setup-card .setup-tag-input input,
+.worker-card.setup-card .setup-name-field input {
+  min-width: 0;
 }
 
 .setup-grid {

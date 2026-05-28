@@ -11,6 +11,69 @@ const taskDefinitions = [
 ];
 
 const defaultConfig = {
+  taskLabels: {
+    collecting: { name: "Collecting", note: "Panels and hardware are gathered here." },
+    moving: { name: "Moving", note: "Material gets transported across the site." },
+    positioning: { name: "Positioning", note: "Pieces are aligned before mounting." },
+    mounting: { name: "Mounting", note: "The wall gets fixed and finished here." },
+  },
+  uiText: {
+    modePlay: "Play Mode",
+    modeSetup: "Setup Mode",
+    step1: "Step 1",
+    step2: "Step 2",
+    step3: "Step 3",
+    chooseStrategy: "Choose Strategy",
+    availableCrew: "Available Crew",
+    coverEveryTask: "Cover Every Task",
+    reviewOutcome: "Review Outcome",
+    crewView: "Crew View",
+    variants: "Variants",
+    saveAndCompare: "Save and Compare Setups",
+    saveCurrentVariant: "Save Current Variant",
+    resetSetup: "Reset Setup",
+    runSimulation: "Run Simulation",
+    resetFlow: "Reset Flow",
+    incoming: "Incoming",
+    completed: "Completed",
+    noCrew: "No crew",
+    noBlocks: "No blocks",
+    dragCrewHere: "Drag crew here",
+    crewAssigned: "crew assigned.",
+    station: "Station",
+    socketsRule1: "Task sockets accept one crew unit",
+    socketsRule2: "Multi-task robots span adjacent sockets",
+    socketsRule3: "Human-only sockets require Skilled Installer",
+    weighting: "Weighting",
+    formula: "Formula",
+    efficiency: "Efficiency",
+    safety: "Safety",
+    manualReduction: "Manual",
+    manualWorkReduced: "Manual Work Reduced",
+    budget: "Budget",
+    strategy: "Strategy",
+    score: "Score",
+    predictedFinalScore: "Predicted Final Score",
+    weightedPerformance: "Weighted performance",
+    strategyFitBonus: "Strategy fit bonus",
+    budgetPenalty: "Budget penalty",
+    robotCount: "Robot Count",
+    base: "Base",
+    cost: "Cost",
+    qty: "Qty",
+    edit: "Edit",
+    fitHumans: "Fit Humans",
+    fitRobots: "Fit Robots",
+    finalRewardFormula: "Final Reward Formula",
+    saveSetup: "Save Setup",
+    resetConfig: "Reset Config",
+    generalistSupport: "Generalist support",
+    on: "On",
+    off: "Off",
+    addGeneralist: "Add Generalist",
+    removeSupport: "Remove Support",
+    clear: "Clear",
+  },
   weights: {
     efficiency: 0.3,
     safety: 0.4,
@@ -287,6 +350,13 @@ function mergeConfig(base, saved) {
   return {
     ...base,
     ...saved,
+    taskLabels: Object.fromEntries(
+      Object.entries(base.taskLabels).map(([taskId, taskMeta]) => [
+        taskId,
+        { ...taskMeta, ...(saved.taskLabels?.[taskId] || {}) },
+      ])
+    ),
+    uiText: { ...base.uiText, ...(saved.uiText || {}) },
     weights: { ...base.weights, ...(saved.weights || {}) },
     workerCatalog: Object.fromEntries(
       Object.entries(base.workerCatalog).map(([workerId, worker]) => [
@@ -313,6 +383,15 @@ function persistConfig() {
 
 function getWorkerCatalog() {
   return state.config.workerCatalog;
+}
+
+function getTaskMeta(taskId, sourceConfig = state.config) {
+  const fallback = taskDefinitions.find((task) => task.id === taskId) || { id: taskId, name: taskId, note: "" };
+  return sourceConfig.taskLabels?.[taskId] || { name: fallback.name, note: fallback.note };
+}
+
+function t(key, sourceConfig = state.config) {
+  return sourceConfig.uiText?.[key] ?? defaultConfig.uiText[key] ?? key;
 }
 
 function getSelectedStrategy() {
@@ -355,6 +434,7 @@ function resetPlaySetup() {
 
 function render() {
   renderModeToggle();
+  renderStaticText();
   const strategy = getSelectedStrategy();
   const metrics = evaluateSetup(strategy, state.placements);
   renderTopbar(strategy, metrics);
@@ -372,10 +452,39 @@ function render() {
   renderVariants();
 }
 
+function renderStaticText() {
+  const mappings = {
+    "setup-panel-title": "finalRewardFormula",
+    "step1-kicker": "step1",
+    "step1-title": "chooseStrategy",
+    "crew-kicker": "crewView",
+    "crew-title": "availableCrew",
+    "step2-kicker": "step2",
+    "step2-title": "coverEveryTask",
+    "legend-1": "socketsRule1",
+    "legend-2": "socketsRule2",
+    "legend-3": "socketsRule3",
+    "variants-kicker": "variants",
+    "variants-title": "saveAndCompare",
+    "step3-kicker": "step3",
+    "step3-title": "reviewOutcome",
+  };
+  Object.entries(mappings).forEach(([id, key]) => {
+    const node = document.getElementById(id);
+    if (node) node.textContent = t(key);
+  });
+  if (saveVariantButton) saveVariantButton.textContent = t("saveCurrentVariant");
+  if (resetSetupButton) resetSetupButton.textContent = t("resetSetup");
+  if (runSimulationButton) runSimulationButton.textContent = t("runSimulation");
+  if (resetSimulationButton) resetSimulationButton.textContent = t("resetFlow");
+  if (saveSetupButton) saveSetupButton.textContent = t("saveSetup");
+  if (resetSetupConfigButton) resetSetupConfigButton.textContent = t("resetConfig");
+}
+
 function renderModeToggle() {
   modeToggleEl.innerHTML = `
-    <button class="button ${state.mode === "play" ? "primary" : "ghost"}" data-mode="play" type="button">Play Mode</button>
-    <button class="button ${state.mode === "setup" ? "primary" : "ghost"}" data-mode="setup" type="button">Setup Mode</button>
+    <button class="button ${state.mode === "play" ? "primary" : "ghost"}" data-mode="play" type="button">${t("modePlay")}</button>
+    <button class="button ${state.mode === "setup" ? "primary" : "ghost"}" data-mode="setup" type="button">${t("modeSetup")}</button>
   `;
   modeToggleEl.querySelectorAll("button").forEach((button) => {
     button.addEventListener("click", () => {
@@ -404,9 +513,9 @@ function renderSetupWorkspace() {
 function renderTopbar(strategy, metrics) {
   topbarStatsEl.innerHTML = "";
   [
-    { label: "Budget", value: `${metrics.totalCost} / ${budgetLimit}` },
-    { label: "Strategy", value: strategy.name },
-    { label: "Score", value: `${metrics.finalScore}` },
+    { label: t("budget"), value: `${metrics.totalCost} / ${budgetLimit}` },
+    { label: t("strategy"), value: strategy.name },
+    { label: t("score"), value: `${metrics.finalScore}` },
   ].forEach((item) => {
     const card = document.createElement("div");
     card.className = "stat-card";
@@ -525,19 +634,19 @@ function renderSetupStrategies(selectedStrategy) {
     card.className = `strategy-card setup-card ${selectedStrategy.id === strategy.id ? "active" : ""}`;
     card.innerHTML = `
       <div class="strategy-title">
-        <strong>${strategy.name}</strong>
-        <button class="button ghost select-strategy" data-strategy-id="${strategy.id}" type="button">Edit</button>
+        <label class="setup-name-field">Name <input data-setup-strategy-name="${strategy.id}" value="${strategy.name}" /></label>
+        <button class="button ghost select-strategy" data-strategy-id="${strategy.id}" type="button">${t("edit", state.setupDraft)}</button>
       </div>
       <div class="setup-inline-fields">
-        <label>Base <input data-setup-strategy="${strategy.id}" data-field="baseCost" value="${strategy.baseCost}" /></label>
-        <label>Eff <input data-setup-strategy="${strategy.id}" data-field="profile.efficiency" value="${strategy.profile.efficiency}" /></label>
-        <label>Safe <input data-setup-strategy="${strategy.id}" data-field="profile.safety" value="${strategy.profile.safety}" /></label>
-        <label>Manual <input data-setup-strategy="${strategy.id}" data-field="profile.manual" value="${strategy.profile.manual}" /></label>
+        <label>${t("base", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="baseCost" value="${strategy.baseCost}" /></label>
+        <label>${t("efficiency", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.efficiency" value="${strategy.profile.efficiency}" /></label>
+        <label>${t("safety", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.safety" value="${strategy.profile.safety}" /></label>
+        <label>${t("manualReduction", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.manual" value="${strategy.profile.manual}" /></label>
       </div>
       <div class="bars">
-        ${renderBar("Efficiency", strategy.profile.efficiency)}
-        ${renderBar("Safety", strategy.profile.safety)}
-        ${renderBar("Manual", strategy.profile.manual)}
+        ${renderBar(t("efficiency", state.setupDraft), strategy.profile.efficiency)}
+        ${renderBar(t("safety", state.setupDraft), strategy.profile.safety)}
+        ${renderBar(t("manualReduction", state.setupDraft), strategy.profile.manual)}
       </div>
     `;
     strategyListEl.appendChild(card);
@@ -556,6 +665,12 @@ function renderSetupStrategies(selectedStrategy) {
       renderSetupStrategies(state.setupDraft.strategies.find((item) => item.id === state.selectedStrategyId));
     });
   });
+  strategyListEl.querySelectorAll("[data-setup-strategy-name]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const strategy = state.setupDraft.strategies.find((item) => item.id === input.dataset.setupStrategyName);
+      strategy.name = input.value;
+    });
+  });
 }
 
 function renderSetupWorkerPool(selectedStrategy) {
@@ -567,20 +682,22 @@ function renderSetupWorkerPool(selectedStrategy) {
     const card = document.createElement("article");
     card.className = "worker-card setup-card";
     card.innerHTML = `
-      <label class="worker-cost-tag setup-tag-input">Cost <input data-setup-worker="${worker.id}" data-field="cost" value="${worker.cost}" /></label>
-      <div class="worker-name"><strong>${worker.name}</strong></div>
+      <div class="setup-card-top">
+        <label class="worker-name setup-name-field"><span>Name</span><input data-setup-worker-name="${worker.id}" value="${worker.name}" /></label>
+        <label class="setup-tag-input">${t("cost", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="cost" value="${worker.cost}" /></label>
+      </div>
       <div class="mini-bars">
-        ${renderMiniBar("Efficiency", workerValues.efficiency)}
-        ${renderMiniBar("Safety", workerValues.safety)}
-        ${renderMiniBar("Manual", workerValues.manualReduction)}
+        ${renderMiniBar(t("efficiency", state.setupDraft), workerValues.efficiency)}
+        ${renderMiniBar(t("safety", state.setupDraft), workerValues.safety)}
+        ${renderMiniBar(t("manualReduction", state.setupDraft), workerValues.manualReduction)}
       </div>
       <div class="setup-card-values">
-        <label>Eff <input data-setup-worker="${worker.id}" data-field="aggregate.efficiency" value="${workerValues.efficiency}" /></label>
-        <label>Safe <input data-setup-worker="${worker.id}" data-field="aggregate.safety" value="${workerValues.safety}" /></label>
-        <label>Manual <input data-setup-worker="${worker.id}" data-field="aggregate.manualReduction" value="${workerValues.manualReduction}" /></label>
+        <label>${t("efficiency", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.efficiency" value="${workerValues.efficiency}" /></label>
+        <label>${t("safety", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.safety" value="${workerValues.safety}" /></label>
+        <label>${t("manualReduction", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.manualReduction" value="${workerValues.manualReduction}" /></label>
       </div>
       <div class="setup-quantity-row">
-        <label class="setup-badge-input">Qty <input data-setup-quantity="${worker.id}" value="${formatQuantity(quantity)}" /></label>
+        <label class="setup-badge-input">${t("qty", state.setupDraft)} <input data-setup-quantity="${worker.id}" value="${formatQuantity(quantity)}" /></label>
       </div>
     `;
     workerPoolEl.appendChild(card);
@@ -589,17 +706,39 @@ function renderSetupWorkerPool(selectedStrategy) {
   workerPoolEl.querySelectorAll("[data-setup-worker]").forEach((input) => {
     input.addEventListener("input", () => updateSetupWorkerValue(input.dataset.setupWorker, input.dataset.field, input.value));
   });
+  workerPoolEl.querySelectorAll("[data-setup-worker-name]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state.setupDraft.workerCatalog[input.dataset.setupWorkerName].name = input.value;
+    });
+  });
   workerPoolEl.querySelectorAll("[data-setup-quantity]").forEach((input) => {
     input.addEventListener("input", () => updateSetupWorkerQuantity(selectedStrategy.id, input.dataset.setupQuantity, input.value));
   });
 }
 
 function renderSetupBoardHint() {
+  const taskEditors = taskDefinitions
+    .map((task) => {
+      const meta = getTaskMeta(task.id, state.setupDraft);
+      return `
+        <div class="task-card setup-card">
+          <div class="setup-inline-fields">
+            <label>Name <input data-setup-task="${task.id}" data-field="name" value="${meta.name}" /></label>
+            <label>Note <input data-setup-task="${task.id}" data-field="note" value="${meta.note}" /></label>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
   taskBoardEl.innerHTML = `
-    <div class="empty-state">
-      Worker quantities are edited directly in the worker pool for the selected strategy. Task assignment is only available in Play Mode.
-    </div>
+    ${taskEditors}
   `;
+  taskBoardEl.querySelectorAll("[data-setup-task]").forEach((input) => {
+    input.addEventListener("input", () => {
+      const taskMeta = state.setupDraft.taskLabels[input.dataset.setupTask];
+      taskMeta[input.dataset.field] = input.value;
+    });
+  });
 }
 
 function renderSetupOutcomePanel(selectedStrategy) {
@@ -607,20 +746,26 @@ function renderSetupOutcomePanel(selectedStrategy) {
     <div class="score-card">
       <div class="panel-kicker">Setup Config</div>
       <div class="setup-inline-fields">
-        <label>Fit Humans <input id="setup-fit-humans" value="${selectedStrategy.fitTargets.humans}" /></label>
-        <label>Fit Robots <input id="setup-fit-robots" value="${selectedStrategy.fitTargets.robots}" /></label>
-        <label>Weight Eff <input id="setup-weight-eff" value="${state.setupDraft.weights.efficiency}" /></label>
-        <label>Weight Safe <input id="setup-weight-safe" value="${state.setupDraft.weights.safety}" /></label>
-        <label>Weight Manual <input id="setup-weight-manual" value="${state.setupDraft.weights.manualReduction}" /></label>
+        <label>${t("fitHumans", state.setupDraft)} <input id="setup-fit-humans" value="${selectedStrategy.fitTargets.humans}" /></label>
+        <label>${t("fitRobots", state.setupDraft)} <input id="setup-fit-robots" value="${selectedStrategy.fitTargets.robots}" /></label>
+        <label>${t("efficiency", state.setupDraft)} Weight <input id="setup-weight-eff" value="${state.setupDraft.weights.efficiency}" /></label>
+        <label>${t("safety", state.setupDraft)} Weight <input id="setup-weight-safe" value="${state.setupDraft.weights.safety}" /></label>
+        <label>${t("manualReduction", state.setupDraft)} Weight <input id="setup-weight-manual" value="${state.setupDraft.weights.manualReduction}" /></label>
       </div>
     </div>
     <label class="formula-field">
-      Final Reward Formula
+      ${t("finalRewardFormula", state.setupDraft)}
       <textarea id="setup-reward-formula" rows="6">${state.setupDraft.rewardFormula}</textarea>
     </label>
+    <div class="setup-block">
+      <h3>Shared Text</h3>
+      <div class="setup-grid">
+        ${renderSharedTextFields()}
+      </div>
+    </div>
     <div class="compare-actions" style="margin-top: 12px">
-      <button id="save-setup-inline" class="button primary" type="button">Save Setup</button>
-      <button id="reset-setup-inline" class="button ghost" type="button">Reset Config</button>
+      <button id="save-setup-inline" class="button primary" type="button">${t("saveSetup", state.setupDraft)}</button>
+      <button id="reset-setup-inline" class="button ghost" type="button">${t("resetConfig", state.setupDraft)}</button>
     </div>
   `;
 
@@ -642,11 +787,63 @@ function renderSetupOutcomePanel(selectedStrategy) {
   document.getElementById("setup-reward-formula").addEventListener("input", (event) => {
     state.setupDraft.rewardFormula = event.target.value;
   });
+  outcomePanelEl.querySelectorAll("[data-setup-text]").forEach((input) => {
+    input.addEventListener("input", () => {
+      state.setupDraft.uiText[input.dataset.setupText] = input.value;
+    });
+  });
   document.getElementById("save-setup-inline").addEventListener("click", saveSetupConfig);
   document.getElementById("reset-setup-inline").addEventListener("click", () => {
     state.setupDraft = structuredClone(defaultConfig);
     renderSetupWorkspace();
   });
+}
+
+function renderSharedTextFields() {
+  const keys = [
+    "modePlay",
+    "modeSetup",
+    "chooseStrategy",
+    "availableCrew",
+    "coverEveryTask",
+    "reviewOutcome",
+    "saveCurrentVariant",
+    "resetSetup",
+    "runSimulation",
+    "resetFlow",
+    "incoming",
+    "completed",
+    "socketsRule1",
+    "socketsRule2",
+    "socketsRule3",
+    "efficiency",
+    "safety",
+    "manualReduction",
+    "manualWorkReduced",
+    "budget",
+    "strategy",
+    "score",
+    "predictedFinalScore",
+    "weightedPerformance",
+    "strategyFitBonus",
+    "budgetPenalty",
+    "robotCount",
+    "cost",
+    "qty",
+    "generalistSupport",
+    "addGeneralist",
+    "removeSupport",
+    "clear",
+  ];
+  return keys
+    .map(
+      (key) => `
+        <label>${key}
+          <input data-setup-text="${key}" value="${state.setupDraft.uiText[key] ?? ""}" />
+        </label>
+      `
+    )
+    .join("");
 }
 
 function updateSetupDraftField(path, rawValue) {
@@ -846,10 +1043,11 @@ function renderTaskBoard(metrics) {
   const workerCatalog = getWorkerCatalog();
   taskBoardEl.innerHTML = "";
   taskDefinitions.forEach((task) => {
+    const taskMeta = getTaskMeta(task.id);
     const taskAssignments = state.placements[task.id];
     const warnings = metrics.taskWarnings[task.id];
     const uniqueTaskAssignments = getUniqueAssignmentsForTask(task.id, state.placements);
-    const dropHint = uniqueTaskAssignments.length ? `${uniqueTaskAssignments.length} crew assigned.` : "Drag crew here";
+    const dropHint = uniqueTaskAssignments.length ? `${uniqueTaskAssignments.length} ${t("crewAssigned")}` : t("dragCrewHere");
 
     const card = document.createElement("div");
     card.className = `task-card socket ${warnings.length ? "warning" : ""}`;
@@ -858,11 +1056,11 @@ function renderTaskBoard(metrics) {
       <div class="task-title">
         <div class="task-title-group">
           <strong class="task-name-with-tooltip">
-            ${task.name}
-            <span class="task-tooltip">${task.note}</span>
+            ${taskMeta.name}
+            <span class="task-tooltip">${taskMeta.note}</span>
           </strong>
         </div>
-        <span class="tag">Station ${taskDefinitions.findIndex((item) => item.id === task.id) + 1}</span>
+        <span class="tag">${t("station")} ${taskDefinitions.findIndex((item) => item.id === task.id) + 1}</span>
       </div>
       <div class="drop-zone ${taskAssignments.length ? "filled" : ""}">
         ${
@@ -882,22 +1080,22 @@ function renderTaskBoard(metrics) {
                           worker.type === "Robot"
                             ? `
                               <div class="support-row">
-                                <span class="microcopy">Generalist support: ${placement.supportGeneralist ? "On" : "Off"}</span>
+                                <span class="microcopy">${t("generalistSupport")}: ${placement.supportGeneralist ? t("on") : t("off")}</span>
                                 <button class="button ghost support-toggle" data-assignment-id="${assignment.assignmentId}" data-action="${placement.supportGeneralist ? "remove" : "add"}" type="button">
-                                  ${placement.supportGeneralist ? "Remove Support" : "Add Generalist"}
+                                  ${placement.supportGeneralist ? t("removeSupport") : t("addGeneralist")}
                                 </button>
                               </div>
                             `
                             : ""
                         }
-                        <button class="button ghost clear-assignment" data-assignment-id="${assignment.assignmentId}" type="button">Clear</button>
+                        <button class="button ghost clear-assignment" data-assignment-id="${assignment.assignmentId}" type="button">${t("clear")}</button>
                       </div>
                     `;
                   })
                   .join("")}
               </div>
             `
-            : `<div class="drop-copy">${dropHint}<br /><span class="microcopy">${task.name.toUpperCase()}</span></div>`
+            : `<div class="drop-copy">${dropHint}<br /><span class="microcopy">${taskMeta.name.toUpperCase()}</span></div>`
         }
         <div class="socket-tooltip">Robot coverage preferred; human-only coverage requires Skilled Installer.</div>
       </div>
@@ -931,17 +1129,18 @@ function renderTaskBoard(metrics) {
 function renderSimulationBoard(metrics) {
   const stageCards = taskDefinitions
     .map((task) => {
+      const taskMeta = getTaskMeta(task.id);
       const stage = state.simulation.stages[task.id];
       const dynamic = metrics.taskDynamics[task.id];
       const waitingBlocks = [...stage.queue, ...stage.parked];
       return `
         <div class="sim-stage ${stage.active ? "busy" : ""} ${dynamic ? "" : "inactive"}">
           <div class="sim-stage-head">
-            <strong>${task.name}</strong>
+            <strong>${taskMeta.name}</strong>
             <span class="tag">${dynamic ? `${Math.round(dynamic.duration)}ms` : "off"}</span>
           </div>
           <div class="sim-stage-meta">
-            <span>${dynamic ? `Eff ${dynamic.efficiency}` : "No crew"}</span>
+            <span>${dynamic ? `${t("efficiency")} ${dynamic.efficiency}` : t("noCrew")}</span>
             <span>${dynamic ? `Crew ${dynamic.crewCount}` : ""}</span>
           </div>
           <div class="sim-stage-processor">
@@ -951,7 +1150,7 @@ function renderSimulationBoard(metrics) {
             ${
               waitingBlocks.length
                 ? waitingBlocks.map(() => `<div class="sim-block"></div>`).join("")
-                : `<div class="sim-placeholder">No blocks</div>`
+                : `<div class="sim-placeholder">${t("noBlocks")}</div>`
             }
           </div>
         </div>
@@ -962,7 +1161,7 @@ function renderSimulationBoard(metrics) {
   simulationBoardEl.innerHTML = `
     <div class="sim-source">
       <div class="sim-column-head">
-        <strong>Incoming</strong>
+        <strong>${t("incoming")}</strong>
         <span class="tag">${state.simulation.pending.length}</span>
       </div>
       <div class="sim-strip">
@@ -972,7 +1171,7 @@ function renderSimulationBoard(metrics) {
     ${stageCards}
     <div class="sim-target">
       <div class="sim-column-head">
-        <strong>Completed</strong>
+        <strong>${t("completed")}</strong>
         <span class="tag">${state.simulation.completed.length}/9</span>
       </div>
       <div class="sim-grid">
@@ -993,20 +1192,20 @@ function renderOutcomePanel(strategy, metrics) {
 
   outcomePanelEl.innerHTML = `
     <div class="score-card">
-      <div class="panel-kicker">Predicted Final Score</div>
+      <div class="panel-kicker">${t("predictedFinalScore")}</div>
       <div class="stat-value">${metrics.finalScore}</div>
-      <div class="score-line"><span>Weighted performance</span><strong>${metrics.performanceScore}</strong></div>
-      <div class="score-line"><span>Strategy fit bonus</span><strong>${metrics.strategyBonus >= 0 ? "+" : ""}${metrics.strategyBonus}</strong></div>
-      <div class="score-line"><span>Budget penalty</span><strong>-${metrics.budgetPenalty}</strong></div>
+      <div class="score-line"><span>${t("weightedPerformance")}</span><strong>${metrics.performanceScore}</strong></div>
+      <div class="score-line"><span>${t("strategyFitBonus")}</span><strong>${metrics.strategyBonus >= 0 ? "+" : ""}${metrics.strategyBonus}</strong></div>
+      <div class="score-line"><span>${t("budgetPenalty")}</span><strong>-${metrics.budgetPenalty}</strong></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="metric-label">Efficiency</div><span class="stat-value">${metrics.efficiency}</span></div>
-      <div class="stat-card"><div class="metric-label">Safety</div><span class="stat-value">${metrics.safety}</span></div>
-      <div class="stat-card"><div class="metric-label">Manual Work Reduced</div><span class="stat-value">${metrics.manualReduction}</span></div>
-      <div class="stat-card"><div class="metric-label">Robot Count</div><span class="stat-value">${metrics.robotCount}</span></div>
+      <div class="stat-card"><div class="metric-label">${t("efficiency")}</div><span class="stat-value">${metrics.efficiency}</span></div>
+      <div class="stat-card"><div class="metric-label">${t("safety")}</div><span class="stat-value">${metrics.safety}</span></div>
+      <div class="stat-card"><div class="metric-label">${t("manualWorkReduced")}</div><span class="stat-value">${metrics.manualReduction}</span></div>
+      <div class="stat-card"><div class="metric-label">${t("robotCount")}</div><span class="stat-value">${metrics.robotCount}</span></div>
     </div>
-    <div class="metric-pill">Weighting: ${weights.efficiency} efficiency + ${weights.safety} safety + ${weights.manualReduction} reduced manual work</div>
-    <div class="metric-pill">Formula: ${state.config.rewardFormula}</div>
+    <div class="metric-pill">${t("weighting")}: ${weights.efficiency} ${t("efficiency")} + ${weights.safety} ${t("safety")} + ${weights.manualReduction} ${t("manualReduction")}</div>
+    <div class="metric-pill">${t("formula")}: ${state.config.rewardFormula}</div>
     <div class="warning-list" style="margin-top: 14px">${warningMarkup}</div>
   `;
 }
@@ -1026,9 +1225,9 @@ function renderWorkerPool(strategy) {
       <span class="worker-cost-tag">${worker.cost}</span>
       <div class="worker-name"><strong>${worker.name}</strong></div>
       <div class="mini-bars">
-        ${renderMiniBar("Efficiency", workerValues.efficiency)}
-        ${renderMiniBar("Safety", workerValues.safety)}
-        ${renderMiniBar("Manual", workerValues.manualReduction)}
+        ${renderMiniBar(t("efficiency"), workerValues.efficiency)}
+        ${renderMiniBar(t("safety"), workerValues.safety)}
+        ${renderMiniBar(t("manualReduction"), workerValues.manualReduction)}
       </div>
       <span class="worker-quantity-badge">${formatQuantity(remaining)}</span>
     `;
@@ -1428,7 +1627,7 @@ function getMiniBarStyle(value, magnitude) {
 }
 
 function labelizeTask(taskId) {
-  return taskDefinitions.find((task) => task.id === taskId)?.name || taskId;
+  return getTaskMeta(taskId).name || taskId;
 }
 
 function roundOneDecimal(value) {
