@@ -2,6 +2,9 @@
 
 This repository contains a browser-based prototype for exploring `Human-Robot Collaboration (HRC)` strategies for a wall assembly job.
 
+Live demo:
+[Open The Web Prototype](https://qiming0303.github.io/HRC_game/)
+
 The tool lets players:
 
 - choose a high-level strategy
@@ -77,6 +80,19 @@ Then open:
 ```text
 http://127.0.0.1:4173/
 ```
+
+## Open Online
+
+Once GitHub Pages finishes deploying, the prototype can be opened here:
+
+[https://qiming0303.github.io/HRC_game/](https://qiming0303.github.io/HRC_game/)
+
+If the page does not open yet, enable `GitHub Pages` in the repository settings:
+
+1. Open `Settings`
+2. Open `Pages`
+3. Set `Source` to `GitHub Actions`
+4. Wait for the deploy workflow to finish
 
 ## How To Use Play Mode
 
@@ -257,4 +273,3 @@ Likely useful next improvements:
 - editable formulas for multi-crew efficiency and safety effects
 - clearer visual cues for support humans and multi-task robots
 - scenario presets for different budgets or wall assembly conditions
-
