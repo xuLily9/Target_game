@@ -1,1633 +1,692 @@
-const STORAGE_KEY = "hrc-strategy-playtest-config-v1";
-const budgetLimit = 200;
-const maxVariants = 3;
-const SIMULATION_TICK_MS = 140;
+const STORAGE_KEY = "construction-logistics-target-value-v1";
 
-const taskDefinitions = [
-  { id: "collecting", name: "Material Sourcing", note: "Gather construction materials and prefabricated elements." },
-  { id: "moving", name: "Transporting", note: "Move components to the work zone efficiently and safely." },
-  { id: "positioning", name: "Aligning", note: "Align parts before fastening and inspection." },
-  { id: "mounting", name: "Securing", note: "Secure assemblies and finish structure connections." },
-];
-
-const defaultConfig = {
-  taskLabels: {
-    collecting: { name: "Material Sourcing", note: "Gather construction materials and prefabricated elements." },
-    moving: { name: "Transporting", note: "Move components to the work zone efficiently and safely." },
-    positioning: { name: "Aligning", note: "Align parts before fastening and inspection." },
-    mounting: { name: "Securing", note: "Secure assemblies and finish structure connections." },
-  },
-  uiText: {
-    modePlay: "Workshop Mode",
-    modeSetup: "Setup Mode",
-    step1: "Round 1",
-    step2: "Round 2",
-    step3: "Summary",
-    chooseStrategy: "Choose Team",
-    availableCrew: "Available Crew",
-    coverEveryTask: "Cover Every Task",
-    reviewOutcome: "Review Outcome",
-    crewView: "Crew View",
-    variants: "Team Assessments",
-    saveAndCompare: "Save and Compare Team Plans",
-    saveCurrentVariant: "Save Current Team",
-    resetSetup: "Reset Layout",
-    runSimulation: "Run Site Flow",
-    resetFlow: "Reset Flow",
-    incoming: "Incoming",
-    completed: "Completed",
-    noCrew: "No crew",
-    noBlocks: "No blocks",
-    dragCrewHere: "Drag crew here",
-    crewAssigned: "crew assigned.",
-    station: "Zone",
-    socketsRule1: "Task sockets accept one crew unit",
-    socketsRule2: "Multi-task robots span adjacent zones",
-    socketsRule3: "Human-only coverage requires Skilled Foreman",
-    weighting: "Weighting",
-    formula: "Formula",
-    efficiency: "Productivity",
-    safety: "Safety",
-    manualReduction: "Effort Reduction",
-    manualWorkReduced: "Manual Work Reduced",
-    budget: "Budget",
-    strategy: "Team",
-    score: "Score",
-    predictedFinalScore: "Predicted Score",
-    weightedPerformance: "Weighted Performance",
-    strategyFitBonus: "Strategy Fit",
-    budgetPenalty: "Budget Penalty",
-    robotCount: "Robots",
-    base: "Base",
-    cost: "Cost",
-    qty: "Qty",
-    edit: "Edit",
-    fitHumans: "Human Share",
-    fitRobots: "Robot Share",
-    finalRewardFormula: "Scoring Formula",
-    saveSetup: "Save Setup",
-    resetConfig: "Reset Config",
-    generalistSupport: "Crew Support",
-    on: "On",
-    off: "Off",
-    addGeneralist: "Add Support",
-    removeSupport: "Remove Support",
-    clear: "Clear",
-    setupPanelTitle: "Configure the construction scenario",
-    targetCapacity: "Capacity Target",
-    operationalSafety: "Operational Safety",
-    manualEffort: "Manual Effort",
-    oversight: "Human Oversight",
-    pass: "Pass",
-    fail: "Fail",
-    round1: "Round 1 Checks",
-    round2: "Round 2 Checks",
-    robotShare: "Robot Capacity Share",
-    budgetStatus: "Budget Status",
+const PROJECT = {
+  totalDemand: 100,
+  days: 5,
+  requiredDailyCapacity: 20,
+  budgetLimit: 200,
+  scoreTargets: {
+    productivity: 70,
+    safety: 70,
+    effort: 70,
   },
   weights: {
-    efficiency: 0.3,
+    productivity: 0.3,
     safety: 0.4,
-    manualReduction: 0.3,
+    effort: 0.3,
   },
-  rewardFormula:
-    "Math.max(0, Math.round(performanceScore + strategyBonus - budgetPenalty - safetyPenalty))",
-  workerCatalog: {
-    construction_worker: {
-      id: "construction_worker",
-      name: "Construction Worker",
-      type: "Human",
-      cost: 10,
-      mode: "single",
-      allowedTasks: taskDefinitions.map((task) => task.id),
-      efficiency: { collecting: 60, moving: 60, positioning: 60, mounting: 60 },
-      safety: { collecting: 70, moving: 72, positioning: 74, mounting: 76 },
-      manualReduction: { collecting: 12, moving: 12, positioning: 12, mounting: 12 },
-      canSoloTask: true,
-    },
-    basic_robot: {
-      id: "basic_robot",
-      name: "Basic Robot",
-      type: "Robot",
-      cost: 20,
-      mode: "fixed",
-      coverage: ["collecting", "moving"],
-      capacity: 3,
-      supportLoad: 0.5,
-      efficiency: { collecting: 68, moving: 70, positioning: 0, mounting: 0 },
-      safety: { collecting: 60, moving: 62, positioning: 0, mounting: 0 },
-      manualReduction: { collecting: 10, moving: 12, positioning: 0, mounting: 0 },
-      canSoloTask: true,
-    },
-    advanced_robot: {
-      id: "advanced_robot",
-      name: "Advanced Robot",
-      type: "Robot",
-      cost: 35,
-      mode: "fixed",
-      coverage: ["moving", "positioning"],
-      capacity: 5,
-      supportLoad: 1,
-      efficiency: { collecting: 0, moving: 74, positioning: 76, mounting: 0 },
-      safety: { collecting: 0, moving: 66, positioning: 68, mounting: 0 },
-      manualReduction: { collecting: 0, moving: 14, positioning: 16, mounting: 0 },
-      canSoloTask: true,
-    },
-    autonomous_fleet: {
-      id: "autonomous_fleet",
-      name: "Autonomous Fleet",
-      type: "Robot",
-      cost: 60,
-      mode: "fixed",
-      coverage: ["collecting", "moving", "positioning", "mounting"],
-      capacity: 8,
-      supportLoad: 3,
-      efficiency: { collecting: 0, moving: 78, positioning: 80, mounting: 78 },
-      safety: { collecting: 0, moving: 64, positioning: 68, mounting: 66 },
-      manualReduction: { collecting: 0, moving: 18, positioning: 20, mounting: 18 },
-      canSoloTask: true,
-    },
-  },
-  strategies: [
-    {
-      id: "team-a",
-      name: "Team A: Human-Led",
-      baseCost: 20,
-      profile: { efficiency: 45, safety: 45, manual: 35 },
-      narrative: "Prioritize human workers with minimal robot support (Basic Robot only). Recommended when low automation budget and skilled crew oversight are available.",
-      quantities: {
-        construction_worker: 6,
-        basic_robot: 2,
-        advanced_robot: 0,
-        autonomous_fleet: 0,
-      },
-      fitRange: { min: 0, max: 0.35 },
-      targets: { capacity: 20, productivity: 45, safety: 70, manual: 35 },
-    },
-    {
-      id: "team-b",
-      name: "Team B: Collaborative",
-      baseCost: 30,
-      profile: { efficiency: 60, safety: 60, manual: 65 },
-      narrative: "Balanced human-robot coordination with Advanced Robots and skilled crew support. Recommended for mixed automation and moderate crew availability.",
-      quantities: {
-        construction_worker: 4,
-        basic_robot: 0,
-        advanced_robot: 2,
-        autonomous_fleet: 0,
-      },
-      fitRange: { min: 0.35, max: 0.75 },
-      targets: { capacity: 20, productivity: 60, safety: 70, manual: 65 },
-    },
-    {
-      id: "team-c",
-      name: "Team C: Robot-Led",
-      baseCost: 40,
-      profile: { efficiency: 70, safety: 65, manual: 68 },
-      narrative: "High automation with Autonomous Fleets and minimal human crew. Recommended when maximum efficiency and labor availability is limited.",
-      quantities: {
-        construction_worker: 2,
-        basic_robot: 0,
-        advanced_robot: 0,
-        autonomous_fleet: 2,
-      },
-      fitRange: { min: 0.75, max: 1 },
-      targets: { capacity: 20, productivity: 70, safety: 70, manual: 68 },
-    },
-  ],
 };
 
-const state = {
-  mode: "play",
-  config: loadConfig(),
-  setupDraft: null,
-  selectedStrategyId: "team-a",
-  placements: {},
-  simulation: buildSimulationState(),
-  simulationTimer: null,
-  variants: [],
-  selectedVariantId: null,
+const STRATEGIES = {
+  human: {
+    id: "human",
+    name: "Human-Led",
+    cost: 20,
+    productivity: -5,
+    safety: -5,
+    effort: -15,
+    fitLabel: "Human-Led",
+  },
+  collaborative: {
+    id: "collaborative",
+    name: "Collaborative",
+    cost: 30,
+    productivity: 10,
+    safety: 10,
+    effort: 15,
+    fitLabel: "Collaborative",
+  },
+  robot: {
+    id: "robot",
+    name: "Robot-Led",
+    cost: 40,
+    productivity: 20,
+    safety: 15,
+    effort: 10,
+    fitLabel: "Robot-Led",
+  },
 };
 
-const topbarStatsEl = document.getElementById("topbar-stats");
-const modeToggleEl = document.getElementById("mode-toggle");
-const setupPanelEl = document.getElementById("setup-panel");
-const setupEditorEl = document.getElementById("setup-editor");
-const strategyListEl = document.getElementById("strategy-list");
-const taskBoardEl = document.getElementById("task-board");
-const outcomePanelEl = document.getElementById("outcome-panel");
-const workerPoolEl = document.getElementById("worker-pool");
-const variantListEl = document.getElementById("variant-list");
-const simulationBoardEl = document.getElementById("simulation-board");
-const saveVariantButton = document.getElementById("save-variant");
-const resetSetupButton = document.getElementById("reset-setup");
-const saveSetupButton = document.getElementById("save-setup");
-const resetSetupConfigButton = document.getElementById("reset-setup-config");
-const runSimulationButton = document.getElementById("run-simulation");
-const resetSimulationButton = document.getElementById("reset-simulation");
-const workspaceEl = document.querySelector(".workspace");
+const RESOURCES = {
+  workers: {
+    id: "workers",
+    label: "Construction Workers",
+    shortLabel: "Workers",
+    icon: "H",
+    cost: 10,
+    capacity: 1,
+    supportLoad: 0,
+    productivity: 0,
+    safety: 0,
+    effort: 0,
+    note: "Workers provide manual transport capacity after robot support is covered.",
+  },
+  basicRobots: {
+    id: "basicRobots",
+    label: "Basic Robots",
+    shortLabel: "Basic",
+    icon: "B",
+    cost: 20,
+    capacity: 3,
+    supportLoad: 0.5,
+    productivity: 5,
+    safety: 5,
+    effort: 8,
+    note: "Low-cost robot transport with light human support demand.",
+  },
+  advancedRobots: {
+    id: "advancedRobots",
+    label: "Advanced Robots",
+    shortLabel: "Advanced",
+    icon: "A",
+    cost: 35,
+    capacity: 5,
+    supportLoad: 1,
+    productivity: 10,
+    safety: 10,
+    effort: 12,
+    note: "Higher productivity and safety benefit with one worker-day of support.",
+  },
+  fleets: {
+    id: "fleets",
+    label: "Autonomous Robot Fleets",
+    shortLabel: "Fleets",
+    icon: "F",
+    cost: 60,
+    capacity: 8,
+    supportLoad: 3,
+    productivity: 18,
+    safety: 8,
+    effort: 18,
+    note: "High-capacity automated fleet that needs intensive human support.",
+  },
+};
 
-saveVariantButton.addEventListener("click", saveVariant);
-resetSetupButton.addEventListener("click", resetPlaySetup);
-saveSetupButton.addEventListener("click", saveSetupConfig);
-resetSetupConfigButton.addEventListener("click", resetSetupConfig);
-runSimulationButton.addEventListener("click", startSimulation);
-resetSimulationButton.addEventListener("click", resetSimulation);
+const DEFAULT_TEAMS = [
+  {
+    id: "team-a",
+    label: "Team A",
+    strategy: "human",
+    resources: {
+      workers: 20,
+      basicRobots: 0,
+      advancedRobots: 0,
+      fleets: 0,
+    },
+  },
+  {
+    id: "team-b",
+    label: "Team B",
+    strategy: "collaborative",
+    resources: {
+      workers: 8,
+      basicRobots: 2,
+      advancedRobots: 2,
+      fleets: 0,
+    },
+  },
+  {
+    id: "team-c",
+    label: "Team C",
+    strategy: "robot",
+    resources: {
+      workers: 6,
+      basicRobots: 1,
+      advancedRobots: 1,
+      fleets: 2,
+    },
+  },
+];
 
-resetPlaySetup();
+const state = loadState();
 
-function loadConfig() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(defaultConfig);
-    return mergeConfig(structuredClone(defaultConfig), JSON.parse(raw));
-  } catch {
-    return structuredClone(defaultConfig);
-  }
-}
+const teamTabsEl = document.getElementById("team-tabs");
+const activeTeamTitleEl = document.getElementById("active-team-title");
+const strategyControlsEl = document.getElementById("strategy-controls");
+const resourceControlsEl = document.getElementById("resource-controls");
+const siteVisualEl = document.getElementById("site-visual");
+const kpiGridEl = document.getElementById("kpi-grid");
+const progressListEl = document.getElementById("progress-list");
+const checksListEl = document.getElementById("checks-list");
+const comparisonSummaryEl = document.getElementById("comparison-summary");
+const resetAllButton = document.getElementById("reset-all");
 
-function mergeConfig(base, saved) {
-  return {
-    ...base,
-    ...saved,
-    taskLabels: Object.fromEntries(
-      Object.entries(base.taskLabels).map(([taskId, taskMeta]) => [
-        taskId,
-        { ...taskMeta, ...(saved.taskLabels?.[taskId] || {}) },
-      ])
-    ),
-    uiText: { ...base.uiText, ...(saved.uiText || {}) },
-    weights: { ...base.weights, ...(saved.weights || {}) },
-    workerCatalog: Object.fromEntries(
-      Object.entries(base.workerCatalog).map(([workerId, worker]) => [
-        workerId,
-        { ...worker, ...(saved.workerCatalog?.[workerId] || {}) },
-      ])
-    ),
-    strategies: base.strategies.map((strategy) => {
-      const savedStrategy = (saved.strategies || []).find((item) => item.id === strategy.id) || {};
-      return {
-        ...strategy,
-        ...savedStrategy,
-        profile: { ...strategy.profile, ...(savedStrategy.profile || {}) },
-        fitTargets: { ...strategy.fitTargets, ...(savedStrategy.fitTargets || {}) },
-        quantities: { ...strategy.quantities, ...(savedStrategy.quantities || {}) },
-      };
-    }),
-  };
-}
-
-function persistConfig() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.config));
-}
-
-function getWorkerCatalog() {
-  return state.config.workerCatalog;
-}
-
-function getTaskMeta(taskId, sourceConfig = state.config) {
-  const fallback = taskDefinitions.find((task) => task.id === taskId) || { id: taskId, name: taskId, note: "" };
-  return sourceConfig.taskLabels?.[taskId] || { name: fallback.name, note: fallback.note };
-}
-
-function t(key, sourceConfig = state.config) {
-  return sourceConfig.uiText?.[key] ?? defaultConfig.uiText[key] ?? key;
-}
-
-function getSelectedStrategy() {
-  return state.config.strategies.find((strategy) => strategy.id === state.selectedStrategyId);
-}
-
-function buildSimulationState() {
-  return {
-    running: false,
-    pending: Array.from({ length: 9 }, (_, index) => ({ id: `block-${index + 1}` })),
-    stages: Object.fromEntries(
-      taskDefinitions.map((task) => [task.id, { queue: [], active: null, remaining: 0, parked: [] }])
-    ),
-    completed: [],
-  };
-}
-
-function stopSimulationTimer() {
-  if (state.simulationTimer) {
-    clearInterval(state.simulationTimer);
-    state.simulationTimer = null;
-  }
-}
-
-function resetSimulationStateOnly() {
-  stopSimulationTimer();
-  state.simulation = buildSimulationState();
-}
-
-function resetPlaySetup() {
-  stopSimulationTimer();
-  state.placements = {};
-  taskDefinitions.forEach((task) => {
-    state.placements[task.id] = [];
-  });
-  state.simulation = buildSimulationState();
-  state.selectedVariantId = null;
+resetAllButton.addEventListener("click", () => {
+  localStorage.removeItem(STORAGE_KEY);
+  const fresh = createDefaultState();
+  state.activeTeamId = fresh.activeTeamId;
+  state.teams = fresh.teams;
+  persistState();
   render();
+});
+
+render();
+
+function createDefaultState() {
+  return {
+    activeTeamId: "team-a",
+    teams: structuredClone(DEFAULT_TEAMS),
+  };
+}
+
+function loadState() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    if (!saved?.teams?.length) return createDefaultState();
+    const defaults = createDefaultState();
+    return {
+      activeTeamId: saved.activeTeamId || defaults.activeTeamId,
+      teams: defaults.teams.map((team) => {
+        const savedTeam = saved.teams.find((item) => item.id === team.id) || {};
+        return {
+          ...team,
+          ...savedTeam,
+          resources: {
+            ...team.resources,
+            ...(savedTeam.resources || {}),
+          },
+        };
+      }),
+    };
+  } catch {
+    return createDefaultState();
+  }
+}
+
+function persistState() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
 }
 
 function render() {
-  renderModeToggle();
-  renderStaticText();
-  const strategy = getSelectedStrategy();
-  const metrics = evaluateSetup(strategy, state.placements);
-  renderTopbar(strategy, metrics);
-  renderModeVisibility();
-  if (state.mode === "setup") {
-    if (!state.setupDraft) state.setupDraft = structuredClone(state.config);
-    renderSetupWorkspace();
-    return;
-  }
-  renderStrategies(strategy);
-  renderSimulationBoard(metrics);
-  renderTaskBoard(metrics);
-  renderOutcomePanel(strategy, metrics);
-  renderWorkerPool(strategy);
-  renderVariants();
+  const activeTeam = getActiveTeam();
+  const activeMetrics = evaluateTeam(activeTeam);
+  const allMetrics = state.teams.map((team) => ({ team, metrics: evaluateTeam(team) }));
+  const winners = calculateWinners(allMetrics);
+
+  renderTeamTabs(allMetrics, winners);
+  renderControls(activeTeam);
+  renderSiteVisual(activeTeam, activeMetrics);
+  renderKpis(activeMetrics);
+  renderProgress(activeMetrics);
+  renderChecks(activeTeam, activeMetrics);
+  renderComparison(allMetrics, winners);
 }
 
-function renderStaticText() {
-  const mappings = {
-    "setup-panel-title": "setupPanelTitle",
-    "step1-kicker": "step1",
-    "step1-title": "chooseStrategy",
-    "crew-kicker": "crewView",
-    "crew-title": "availableCrew",
-    "step2-kicker": "step2",
-    "step2-title": "coverEveryTask",
-    "legend-1": "socketsRule1",
-    "legend-2": "socketsRule2",
-    "legend-3": "socketsRule3",
-    "variants-kicker": "variants",
-    "variants-title": "saveAndCompare",
-    "step3-kicker": "step3",
-    "step3-title": "reviewOutcome",
-  };
-  Object.entries(mappings).forEach(([id, key]) => {
-    const node = document.getElementById(id);
-    if (node) node.textContent = t(key);
-  });
-  if (saveVariantButton) saveVariantButton.textContent = t("saveCurrentVariant");
-  if (resetSetupButton) resetSetupButton.textContent = t("resetSetup");
-  if (runSimulationButton) runSimulationButton.textContent = t("runSimulation");
-  if (resetSimulationButton) resetSimulationButton.textContent = t("resetFlow");
-  if (saveSetupButton) saveSetupButton.textContent = t("saveSetup");
-  if (resetSetupConfigButton) resetSetupConfigButton.textContent = t("resetConfig");
+function getActiveTeam() {
+  return state.teams.find((team) => team.id === state.activeTeamId) || state.teams[0];
 }
 
-function renderModeToggle() {
-  modeToggleEl.innerHTML = `
-    <button class="button ${state.mode === "play" ? "primary" : "ghost"}" data-mode="play" type="button">${t("modePlay")}</button>
-    <button class="button ${state.mode === "setup" ? "primary" : "ghost"}" data-mode="setup" type="button">${t("modeSetup")}</button>
-  `;
-  modeToggleEl.querySelectorAll("button").forEach((button) => {
+function renderTeamTabs(allMetrics, winners) {
+  teamTabsEl.innerHTML = allMetrics
+    .map(({ team, metrics }) => {
+      const active = team.id === state.activeTeamId ? "active" : "";
+      const winnerTags = [
+        winners.round1?.team.id === team.id ? `<span class="winner-chip">Round 1 Winner</span>` : "",
+        winners.round2?.team.id === team.id ? `<span class="winner-chip">Round 2 Winner</span>` : "",
+      ].join("");
+      return `
+        <button class="team-tab ${active}" data-team-id="${team.id}" type="button">
+          <span>${team.label}</span>
+          <strong>${STRATEGIES[team.strategy].name}</strong>
+          <small>${formatCredits(metrics.totalCost)} / ${formatNumber(metrics.netCapacity)} units/day</small>
+          ${winnerTags}
+        </button>
+      `;
+    })
+    .join("");
+
+  teamTabsEl.querySelectorAll("[data-team-id]").forEach((button) => {
     button.addEventListener("click", () => {
-      state.mode = button.dataset.mode;
-      if (state.mode === "setup") state.setupDraft = structuredClone(state.config);
+      state.activeTeamId = button.dataset.teamId;
+      persistState();
       render();
     });
   });
 }
 
-function renderModeVisibility() {
-  if (state.mode === "setup") {
-    setupPanelEl.classList.remove("hidden");
-    workspaceEl.classList.add("hidden");
-  } else {
-    setupPanelEl.classList.add("hidden");
-    workspaceEl.classList.remove("hidden");
-  }
-}
-
-function renderSetupWorkspace() {
-  const strategy = state.setupDraft.strategies.find((item) => item.id === state.selectedStrategyId) || state.setupDraft.strategies[0];
-  renderSetupStrategies(strategy);
-  renderSetupWorkerPool(strategy);
-  renderSetupBoardHint();
-  renderSetupOutcomePanel(strategy);
-  variantListEl.innerHTML = `<div class="empty-state">Setup Mode edits the same layout as Play Mode. Save setup to update the playable version.</div>`;
-  simulationBoardEl.innerHTML = "";
-}
-
-function renderTopbar(strategy, metrics) {
-  topbarStatsEl.innerHTML = "";
-  [
-    { label: t("budget"), value: `${metrics.totalCost} / ${budgetLimit}` },
-    { label: t("strategy"), value: strategy.name },
-    { label: t("score"), value: `${metrics.finalScore}` },
-  ].forEach((item) => {
-    const card = document.createElement("div");
-    card.className = "stat-card";
-    card.innerHTML = `<div class="metric-label">${item.label}</div><span class="stat-value">${item.value}</span>`;
-    topbarStatsEl.appendChild(card);
-  });
-}
-
-function renderSetupEditor() {
-  const draft = state.setupDraft;
-  const workerList = Object.values(draft.workerCatalog);
-  const strategyList = draft.strategies;
-
-  setupEditorEl.innerHTML = `
-    <section class="setup-block">
-      <h3>Weights And Reward</h3>
-      <div class="setup-grid setup-grid-weights">
-        <label>Efficiency Weight<input data-setup-path="weights.efficiency" value="${draft.weights.efficiency}" /></label>
-        <label>Safety Weight<input data-setup-path="weights.safety" value="${draft.weights.safety}" /></label>
-        <label>Manual Weight<input data-setup-path="weights.manualReduction" value="${draft.weights.manualReduction}" /></label>
-      </div>
-      <label class="formula-field">
-        Final Reward Formula
-        <textarea data-setup-path="rewardFormula" rows="3">${draft.rewardFormula}</textarea>
-      </label>
-      <p class="microcopy">Formula variables: performanceScore, strategyBonus, budgetPenalty, efficiency, safety, manualReduction, humanCount, robotCount, coveredTasks, totalCost, budgetLimit.</p>
-    </section>
-
-    <section class="setup-block">
-      <h3>Worker Values</h3>
-      <div class="setup-worker-list">
-        ${workerList
-          .map(
-            (worker) => `
-              <article class="setup-worker-card">
-                <div class="setup-worker-head">
-                  <strong>${worker.name}</strong>
-                  <span class="tag">${worker.type}</span>
-                </div>
-                <div class="setup-grid">
-                  <label>Cost<input data-setup-path="workerCatalog.${worker.id}.cost" value="${worker.cost}" /></label>
-                  ${taskDefinitions
-                    .map(
-                      (task) => `
-                        <label>${task.name} Eff<input data-setup-path="workerCatalog.${worker.id}.efficiency.${task.id}" value="${worker.efficiency[task.id]}" /></label>
-                        <label>${task.name} Safe<input data-setup-path="workerCatalog.${worker.id}.safety.${task.id}" value="${worker.safety[task.id]}" /></label>
-                        <label>${task.name} Manual<input data-setup-path="workerCatalog.${worker.id}.manualReduction.${task.id}" value="${worker.manualReduction[task.id]}" /></label>
-                      `
-                    )
-                    .join("")}
-                </div>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
-
-    <section class="setup-block">
-      <h3>Strategy Crew Setup</h3>
-      <div class="setup-strategy-list">
-        ${strategyList
-          .map(
-            (strategy) => `
-              <article class="setup-strategy-card">
-                <div class="setup-worker-head">
-                  <strong>${strategy.name}</strong>
-                  <span class="tag">Base ${strategy.baseCost}</span>
-                </div>
-                <div class="setup-grid setup-grid-weights">
-                  <label>Base Cost<input data-setup-path="strategies.${strategy.id}.baseCost" value="${strategy.baseCost}" /></label>
-                  <label>Profile Eff<input data-setup-path="strategies.${strategy.id}.profile.efficiency" value="${strategy.profile.efficiency}" /></label>
-                  <label>Profile Safe<input data-setup-path="strategies.${strategy.id}.profile.safety" value="${strategy.profile.safety}" /></label>
-                  <label>Profile Manual<input data-setup-path="strategies.${strategy.id}.profile.manual" value="${strategy.profile.manual}" /></label>
-                  <label>Fit Humans<input data-setup-path="strategies.${strategy.id}.fitTargets.humans" value="${strategy.fitTargets.humans}" /></label>
-                  <label>Fit Robots<input data-setup-path="strategies.${strategy.id}.fitTargets.robots" value="${strategy.fitTargets.robots}" /></label>
-                </div>
-                <div class="setup-quantity-list">
-                  ${workerList
-                    .map((worker) => {
-                      const quantity = strategy.quantities[worker.id] ?? 0;
-                      return `
-                        <div class="quantity-row">
-                          <span>${worker.name}</span>
-                          <div class="quantity-controls">
-                            <button class="icon-button setup-quantity" data-strategy-id="${strategy.id}" data-worker-id="${worker.id}" data-action="decrement" type="button">−</button>
-                            <span class="quantity-value">${formatQuantity(quantity)}</span>
-                            <button class="icon-button setup-quantity" data-strategy-id="${strategy.id}" data-worker-id="${worker.id}" data-action="increment" type="button">+</button>
-                            <button class="button ghost setup-quantity" data-strategy-id="${strategy.id}" data-worker-id="${worker.id}" data-action="toggle-unlimited" type="button">∞</button>
-                          </div>
-                        </div>
-                      `;
-                    })
-                    .join("")}
-                </div>
-              </article>
-            `
-          )
-          .join("")}
-      </div>
-    </section>
+function renderControls(team) {
+  activeTeamTitleEl.textContent = `${team.label} Decision Sheet`;
+  strategyControlsEl.innerHTML = `
+    <div class="control-heading">
+      <span>Round 2 Strategy</span>
+      <strong>${STRATEGIES[team.strategy].name}</strong>
+    </div>
+    <div class="strategy-options">
+      ${Object.values(STRATEGIES)
+        .map(
+          (strategy) => `
+            <button class="strategy-option ${team.strategy === strategy.id ? "selected" : ""}" data-strategy-id="${strategy.id}" type="button">
+              <span>${strategy.name}</span>
+              <small>Cost ${strategy.cost} | P ${signed(strategy.productivity)} | S ${signed(strategy.safety)} | E ${signed(strategy.effort)}</small>
+            </button>
+          `
+        )
+        .join("")}
+    </div>
   `;
 
-  setupEditorEl.querySelectorAll("input, textarea").forEach((field) => {
-    field.addEventListener("input", () => updateSetupDraftField(field.dataset.setupPath, field.value));
-  });
-  setupEditorEl.querySelectorAll(".setup-quantity").forEach((button) => {
-    button.addEventListener("click", () => updateSetupQuantity(button.dataset.strategyId, button.dataset.workerId, button.dataset.action));
-  });
-}
-
-function renderSetupStrategies(selectedStrategy) {
-  strategyListEl.innerHTML = "";
-  state.setupDraft.strategies.forEach((strategy) => {
-    const card = document.createElement("div");
-    card.className = `strategy-card setup-card ${selectedStrategy.id === strategy.id ? "active" : ""}`;
-    card.innerHTML = `
-      <div class="strategy-title">
-        <label class="setup-name-field">Name <input data-setup-strategy-name="${strategy.id}" value="${strategy.name}" /></label>
-        <button class="button ghost select-strategy" data-strategy-id="${strategy.id}" type="button">${t("edit", state.setupDraft)}</button>
-      </div>
-      <div class="setup-inline-fields">
-        <label>${t("base", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="baseCost" value="${strategy.baseCost}" /></label>
-        <label>${t("efficiency", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.efficiency" value="${strategy.profile.efficiency}" /></label>
-        <label>${t("safety", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.safety" value="${strategy.profile.safety}" /></label>
-        <label>${t("manualReduction", state.setupDraft)} <input data-setup-strategy="${strategy.id}" data-field="profile.manual" value="${strategy.profile.manual}" /></label>
-      </div>
-      <div class="bars">
-        ${renderBar(t("efficiency", state.setupDraft), strategy.profile.efficiency)}
-        ${renderBar(t("safety", state.setupDraft), strategy.profile.safety)}
-        ${renderBar(t("manualReduction", state.setupDraft), strategy.profile.manual)}
-      </div>
-    `;
-    strategyListEl.appendChild(card);
-  });
-
-  strategyListEl.querySelectorAll(".select-strategy").forEach((button) => {
-    button.addEventListener("click", () => {
-      state.selectedStrategyId = button.dataset.strategyId;
-      renderSetupWorkspace();
-    });
-  });
-  strategyListEl.querySelectorAll("[data-setup-strategy]").forEach((input) => {
-    input.addEventListener("input", () => {
-      const strategy = state.setupDraft.strategies.find((item) => item.id === input.dataset.setupStrategy);
-      setNestedValue(strategy, input.dataset.field, Number(input.value));
-      renderSetupStrategies(state.setupDraft.strategies.find((item) => item.id === state.selectedStrategyId));
-    });
-  });
-  strategyListEl.querySelectorAll("[data-setup-strategy-name]").forEach((input) => {
-    input.addEventListener("input", () => {
-      const strategy = state.setupDraft.strategies.find((item) => item.id === input.dataset.setupStrategyName);
-      strategy.name = input.value;
-    });
-  });
-}
-
-function renderSetupWorkerPool(selectedStrategy) {
-  const workerCatalog = state.setupDraft.workerCatalog;
-  workerPoolEl.innerHTML = "";
-  Object.values(workerCatalog).forEach((worker) => {
-    const workerValues = summarizeWorkerValues(worker);
-    const quantity = selectedStrategy.quantities[worker.id] ?? 0;
-    const card = document.createElement("article");
-    card.className = "worker-card setup-card";
-    card.innerHTML = `
-      <div class="setup-card-top">
-        <label class="worker-name setup-name-field"><span>Name</span><input data-setup-worker-name="${worker.id}" value="${worker.name}" /></label>
-        <label class="setup-tag-input">${t("cost", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="cost" value="${worker.cost}" /></label>
-      </div>
-      <div class="mini-bars">
-        ${renderMiniBar(t("efficiency", state.setupDraft), workerValues.efficiency)}
-        ${renderMiniBar(t("safety", state.setupDraft), workerValues.safety)}
-        ${renderMiniBar(t("manualReduction", state.setupDraft), workerValues.manualReduction)}
-      </div>
-      <div class="setup-card-values">
-        <label>${t("efficiency", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.efficiency" value="${workerValues.efficiency}" /></label>
-        <label>${t("safety", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.safety" value="${workerValues.safety}" /></label>
-        <label>${t("manualReduction", state.setupDraft)} <input data-setup-worker="${worker.id}" data-field="aggregate.manualReduction" value="${workerValues.manualReduction}" /></label>
-      </div>
-      <div class="setup-quantity-row">
-        <label class="setup-badge-input">${t("qty", state.setupDraft)} <input data-setup-quantity="${worker.id}" value="${formatQuantity(quantity)}" /></label>
-      </div>
-    `;
-    workerPoolEl.appendChild(card);
-  });
-
-  workerPoolEl.querySelectorAll("[data-setup-worker]").forEach((input) => {
-    input.addEventListener("input", () => updateSetupWorkerValue(input.dataset.setupWorker, input.dataset.field, input.value));
-  });
-  workerPoolEl.querySelectorAll("[data-setup-worker-name]").forEach((input) => {
-    input.addEventListener("input", () => {
-      state.setupDraft.workerCatalog[input.dataset.setupWorkerName].name = input.value;
-    });
-  });
-  workerPoolEl.querySelectorAll("[data-setup-quantity]").forEach((input) => {
-    input.addEventListener("input", () => updateSetupWorkerQuantity(selectedStrategy.id, input.dataset.setupQuantity, input.value));
-  });
-}
-
-function renderSetupBoardHint() {
-  const taskEditors = taskDefinitions
-    .map((task) => {
-      const meta = getTaskMeta(task.id, state.setupDraft);
+  resourceControlsEl.innerHTML = Object.values(RESOURCES)
+    .map((resource) => {
+      const value = getResourceValue(team, resource.id);
       return `
-        <div class="task-card setup-card">
-          <div class="setup-inline-fields">
-            <label>Name <input data-setup-task="${task.id}" data-field="name" value="${meta.name}" /></label>
-            <label>Note <input data-setup-task="${task.id}" data-field="note" value="${meta.note}" /></label>
+        <article class="resource-row">
+          <div>
+            <strong>${resource.label}</strong>
+            <p>${resource.note}</p>
+            <span class="resource-meta">Cost ${resource.cost} | Capacity ${resource.capacity}/day | Support ${resource.supportLoad}</span>
           </div>
-        </div>
+          <div class="stepper" aria-label="${resource.label}">
+            <button class="icon-button" data-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}">-</button>
+            <input data-resource-input="${resource.id}" type="number" min="0" max="30" value="${value}" />
+            <button class="icon-button" data-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}">+</button>
+          </div>
+        </article>
       `;
     })
     .join("");
-  taskBoardEl.innerHTML = `
-    ${taskEditors}
-  `;
-  taskBoardEl.querySelectorAll("[data-setup-task]").forEach((input) => {
+
+  strategyControlsEl.querySelectorAll("[data-strategy-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      team.strategy = button.dataset.strategyId;
+      persistState();
+      render();
+    });
+  });
+
+  resourceControlsEl.querySelectorAll("[data-resource-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const resourceId = button.dataset.resourceId;
+      const delta = button.dataset.action === "increment" ? 1 : -1;
+      team.resources[resourceId] = clampQuantity(getResourceValue(team, resourceId) + delta);
+      persistState();
+      render();
+    });
+  });
+
+  resourceControlsEl.querySelectorAll("[data-resource-input]").forEach((input) => {
     input.addEventListener("input", () => {
-      const taskMeta = state.setupDraft.taskLabels[input.dataset.setupTask];
-      taskMeta[input.dataset.field] = input.value;
+      team.resources[input.dataset.resourceInput] = clampQuantity(Number(input.value));
+      persistState();
+      render();
     });
   });
 }
 
-function renderSetupOutcomePanel(selectedStrategy) {
-  outcomePanelEl.innerHTML = `
-    <div class="score-card">
-      <div class="panel-kicker">Setup Config</div>
-      <div class="setup-inline-fields">
-        <label>${t("fitHumans", state.setupDraft)} <input id="setup-fit-humans" value="${selectedStrategy.fitTargets.humans}" /></label>
-        <label>${t("fitRobots", state.setupDraft)} <input id="setup-fit-robots" value="${selectedStrategy.fitTargets.robots}" /></label>
-        <label>${t("efficiency", state.setupDraft)} Weight <input id="setup-weight-eff" value="${state.setupDraft.weights.efficiency}" /></label>
-        <label>${t("safety", state.setupDraft)} Weight <input id="setup-weight-safe" value="${state.setupDraft.weights.safety}" /></label>
-        <label>${t("manualReduction", state.setupDraft)} Weight <input id="setup-weight-manual" value="${state.setupDraft.weights.manualReduction}" /></label>
+function renderSiteVisual(team, metrics) {
+  const speedClass = metrics.netCapacity >= PROJECT.requiredDailyCapacity ? "flow-fast" : metrics.netCapacity > 0 ? "flow-slow" : "flow-paused";
+  siteVisualEl.innerHTML = `
+    <div class="site-map ${speedClass}">
+      <div class="storage-zone">
+        <span>Temporary Storage</span>
+        <div class="material-stack">
+          ${Array.from({ length: 9 }, () => `<i></i>`).join("")}
+        </div>
+      </div>
+
+      <div class="flow-lane" aria-hidden="true">
+        ${Array.from({ length: Math.max(3, Math.min(12, Math.round(metrics.netCapacity / 2))) }, (_, index) => `<b style="--dot:${index}"></b>`).join("")}
+      </div>
+
+      <div class="work-zones">
+        <span>Work Zones</span>
+        <div class="zone-grid">
+          <i>Core</i>
+          <i>Facade</i>
+          <i>MEP</i>
+          <i>Fit-Out</i>
+        </div>
       </div>
     </div>
-    <label class="formula-field">
-      ${t("finalRewardFormula", state.setupDraft)}
-      <textarea id="setup-reward-formula" rows="6">${state.setupDraft.rewardFormula}</textarea>
-    </label>
-    <div class="setup-block">
-      <h3>Shared Text</h3>
-      <div class="setup-grid">
-        ${renderSharedTextFields()}
-      </div>
-    </div>
-    <div class="compare-actions" style="margin-top: 12px">
-      <button id="save-setup-inline" class="button primary" type="button">${t("saveSetup", state.setupDraft)}</button>
-      <button id="reset-setup-inline" class="button ghost" type="button">${t("resetConfig", state.setupDraft)}</button>
+
+    <div class="fleet-yard">
+      ${renderCrewIcons("workers", team.resources.workers)}
+      ${renderCrewIcons("basicRobots", team.resources.basicRobots)}
+      ${renderCrewIcons("advancedRobots", team.resources.advancedRobots)}
+      ${renderCrewIcons("fleets", team.resources.fleets)}
     </div>
   `;
-
-  document.getElementById("setup-fit-humans").addEventListener("input", (event) => {
-    selectedStrategy.fitTargets.humans = Number(event.target.value);
-  });
-  document.getElementById("setup-fit-robots").addEventListener("input", (event) => {
-    selectedStrategy.fitTargets.robots = Number(event.target.value);
-  });
-  document.getElementById("setup-weight-eff").addEventListener("input", (event) => {
-    state.setupDraft.weights.efficiency = Number(event.target.value);
-  });
-  document.getElementById("setup-weight-safe").addEventListener("input", (event) => {
-    state.setupDraft.weights.safety = Number(event.target.value);
-  });
-  document.getElementById("setup-weight-manual").addEventListener("input", (event) => {
-    state.setupDraft.weights.manualReduction = Number(event.target.value);
-  });
-  document.getElementById("setup-reward-formula").addEventListener("input", (event) => {
-    state.setupDraft.rewardFormula = event.target.value;
-  });
-  outcomePanelEl.querySelectorAll("[data-setup-text]").forEach((input) => {
-    input.addEventListener("input", () => {
-      state.setupDraft.uiText[input.dataset.setupText] = input.value;
-    });
-  });
-  document.getElementById("save-setup-inline").addEventListener("click", saveSetupConfig);
-  document.getElementById("reset-setup-inline").addEventListener("click", () => {
-    state.setupDraft = structuredClone(defaultConfig);
-    renderSetupWorkspace();
-  });
 }
 
-function renderSharedTextFields() {
-  const keys = [
-    "modePlay",
-    "modeSetup",
-    "chooseStrategy",
-    "availableCrew",
-    "coverEveryTask",
-    "reviewOutcome",
-    "saveCurrentVariant",
-    "resetSetup",
-    "runSimulation",
-    "resetFlow",
-    "incoming",
-    "completed",
-    "socketsRule1",
-    "socketsRule2",
-    "socketsRule3",
-    "efficiency",
-    "safety",
-    "manualReduction",
-    "manualWorkReduced",
-    "budget",
-    "strategy",
-    "score",
-    "predictedFinalScore",
-    "weightedPerformance",
-    "strategyFitBonus",
-    "budgetPenalty",
-    "robotCount",
-    "cost",
-    "qty",
-    "generalistSupport",
-    "addGeneralist",
-    "removeSupport",
-    "clear",
+function renderCrewIcons(resourceId, count) {
+  const resource = RESOURCES[resourceId];
+  const visibleCount = Math.min(count, 12);
+  const extra = count > visibleCount ? `<span class="extra-count">+${count - visibleCount}</span>` : "";
+  return `
+    <div class="crew-icon-group ${resourceId}">
+      <div class="crew-icon-title">${resource.shortLabel}</div>
+      <div class="crew-icons">
+        ${Array.from({ length: visibleCount }, () => `<span>${resource.icon}</span>`).join("")}
+        ${extra}
+      </div>
+    </div>
+  `;
+}
+
+function renderKpis(metrics) {
+  const kpis = [
+    { label: "Total Cost", value: formatCredits(metrics.totalCost), status: metrics.totalCost <= PROJECT.budgetLimit ? "pass" : "fail" },
+    { label: "Net Daily Capacity", value: `${formatNumber(metrics.netCapacity)} units/day`, status: metrics.capacityFeasible ? "pass" : "fail" },
+    { label: "Robot Support Load", value: `${formatNumber(metrics.robotSupportLoad)} worker-days`, status: metrics.humanSupportFeasible ? "pass" : "fail" },
+    { label: "Robot Capacity Share", value: formatPercent(metrics.robotShare), status: metrics.strategyFit ? "pass" : "warning" },
+    { label: "Productivity", value: formatNumber(metrics.productivity), status: metrics.productivity >= PROJECT.scoreTargets.productivity ? "pass" : "fail" },
+    { label: "Operational Safety", value: formatNumber(metrics.safety), status: metrics.safety >= PROJECT.scoreTargets.safety ? "pass" : "fail" },
+    { label: "Manual Effort Reduction", value: formatNumber(metrics.effort), status: metrics.effort >= PROJECT.scoreTargets.effort ? "pass" : "fail" },
+    { label: "Value Score", value: formatNumber(metrics.valueScore), status: metrics.round2Eligible ? "pass" : "warning" },
   ];
-  return keys
+
+  kpiGridEl.innerHTML = kpis
     .map(
-      (key) => `
-        <label>${key}
-          <input data-setup-text="${key}" value="${state.setupDraft.uiText[key] ?? ""}" />
-        </label>
+      (kpi) => `
+        <article class="kpi-card ${kpi.status}">
+          <span>${kpi.label}</span>
+          <strong>${kpi.value}</strong>
+        </article>
       `
     )
     .join("");
 }
 
-function updateSetupDraftField(path, rawValue) {
-  const parts = path.split(".");
-  let target = state.setupDraft;
-  for (let index = 0; index < parts.length - 1; index += 1) {
-    const part = parts[index];
-    if (part === "strategies") {
-      target = target.strategies.find((item) => item.id === parts[index + 1]);
-      index += 1;
-      continue;
-    }
-    target = target[part];
-  }
-  target[parts.at(-1)] = parts.at(-1) === "rewardFormula" ? rawValue : Number(rawValue);
-}
+function renderProgress(metrics) {
+  const items = [
+    { label: "Capacity Progress", value: metrics.netCapacity, target: PROJECT.requiredDailyCapacity, suffix: "units/day", intent: "higher" },
+    { label: "Budget Progress", value: metrics.totalCost, target: PROJECT.budgetLimit, suffix: "credits", intent: "lower" },
+    { label: "Productivity Target", value: metrics.productivity, target: PROJECT.scoreTargets.productivity, suffix: "score", intent: "higher" },
+    { label: "Safety Target", value: metrics.safety, target: PROJECT.scoreTargets.safety, suffix: "score", intent: "higher" },
+    { label: "Effort Reduction Target", value: metrics.effort, target: PROJECT.scoreTargets.effort, suffix: "score", intent: "higher" },
+  ];
 
-function updateSetupQuantity(strategyId, workerId, action) {
-  const strategy = state.setupDraft.strategies.find((item) => item.id === strategyId);
-  const current = strategy.quantities[workerId] ?? 0;
-  if (action === "toggle-unlimited") {
-    strategy.quantities[workerId] = current === "unlimited" ? 0 : "unlimited";
-  } else if (current !== "unlimited") {
-    strategy.quantities[workerId] = action === "increment" ? current + 1 : current - 1;
-  }
-  renderSetupEditor();
-}
-
-function setNestedValue(target, path, value) {
-  const parts = path.split(".");
-  let current = target;
-  for (let index = 0; index < parts.length - 1; index += 1) current = current[parts[index]];
-  current[parts.at(-1)] = value;
-}
-
-function updateSetupWorkerValue(workerId, field, rawValue) {
-  const worker = state.setupDraft.workerCatalog[workerId];
-  const numericValue = Number(rawValue);
-  if (field === "cost") {
-    worker.cost = numericValue;
-  } else if (field.startsWith("aggregate.")) {
-    const key = field.split(".")[1];
-    getWorkerPreviewTasks(worker).forEach((taskId) => {
-      worker[key][taskId] = numericValue;
-    });
-  }
-  renderSetupWorkerPool(state.setupDraft.strategies.find((item) => item.id === state.selectedStrategyId));
-}
-
-function updateSetupWorkerQuantity(strategyId, workerId, rawValue) {
-  const strategy = state.setupDraft.strategies.find((item) => item.id === strategyId);
-  strategy.quantities[workerId] = rawValue.trim() === "∞" ? "unlimited" : Number(rawValue);
-}
-
-function saveSetupConfig() {
-  try {
-    validateRewardFormula(state.setupDraft.rewardFormula);
-    state.config = structuredClone(state.setupDraft);
-    persistConfig();
-    state.mode = "play";
-    state.setupDraft = null;
-    resetPlaySetup();
-  } catch (error) {
-    alert(`Setup could not be saved: ${error.message}`);
-  }
-}
-
-function resetSetupConfig() {
-  state.setupDraft = structuredClone(defaultConfig);
-  renderSetupEditor();
-}
-
-function startSimulation() {
-  stopSimulationTimer();
-  const metrics = evaluateSetup(getSelectedStrategy(), state.placements);
-  state.simulation.running = true;
-  state.simulationTimer = setInterval(() => stepSimulation(metrics.taskDynamics), SIMULATION_TICK_MS);
-  render();
-}
-
-function resetSimulation() {
-  resetSimulationStateOnly();
-  render();
-}
-
-function stepSimulation(taskDynamics) {
-  const stageIds = taskDefinitions.map((task) => task.id);
-  const staffedStageIds = stageIds.filter((stageId) => taskDynamics[stageId]);
-
-  for (let index = stageIds.length - 1; index >= 0; index -= 1) {
-    const stageId = stageIds[index];
-    const stage = state.simulation.stages[stageId];
-    if (!stage.active) continue;
-
-    stage.remaining -= SIMULATION_TICK_MS;
-    if (stage.remaining > 0) continue;
-
-    const nextStageId = stageIds[index + 1];
-    if (!nextStageId) {
-      state.simulation.completed.push(stage.active);
-      stage.active = null;
-      stage.remaining = 0;
-      continue;
-    }
-
-    if (!taskDynamics[nextStageId]) {
-      stage.parked.push(stage.active);
-      stage.active = null;
-      stage.remaining = 0;
-      continue;
-    }
-
-    const nextStage = state.simulation.stages[nextStageId];
-    nextStage.queue.push(stage.active);
-    stage.active = null;
-    stage.remaining = 0;
-  }
-
-  for (const stageId of staffedStageIds) {
-    const stage = state.simulation.stages[stageId];
-    if (!stage.active && stage.queue.length) {
-      stage.active = stage.queue.shift();
-      stage.remaining = taskDynamics[stageId]?.duration ?? 1800;
-    }
-  }
-
-  const firstStageId = staffedStageIds[0];
-  if (firstStageId) {
-    const firstStage = state.simulation.stages[firstStageId];
-    if (!firstStage.active && !firstStage.queue.length && state.simulation.pending.length) {
-      firstStage.active = state.simulation.pending.shift();
-      firstStage.remaining = taskDynamics[firstStageId]?.duration ?? 1800;
-    } else if (firstStage.queue.length < 2 && state.simulation.pending.length) {
-      firstStage.queue.push(state.simulation.pending.shift());
-    }
-  }
-
-  const allDone =
-    !state.simulation.pending.length &&
-    stageIds.every((stageId) => !state.simulation.stages[stageId].active && !state.simulation.stages[stageId].queue.length);
-
-  if (allDone) stopSimulationTimer();
-  render();
-}
-
-function validateRewardFormula(formula) {
-  const runner = new Function(
-    "performanceScore",
-    "strategyBonus",
-    "budgetPenalty",
-    "efficiency",
-    "safety",
-    "manualReduction",
-    "humanCount",
-    "robotCount",
-    "coveredTasks",
-    "totalCost",
-    "budgetLimit",
-    "safetyPenalty",
-    `return ${formula};`
-  );
-  runner(1, 1, 1, 1, 1, 1, 1, 1, 1, 1, budgetLimit, 1);
-}
-
-function renderStrategies(selectedStrategy) {
-  strategyListEl.innerHTML = "";
-  state.config.strategies.forEach((strategy) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = `strategy-card ${selectedStrategy.id === strategy.id ? "active" : ""}`;
-    card.addEventListener("click", () => {
-      state.selectedStrategyId = strategy.id;
-      resetPlaySetup();
-    });
-
-    const rosterSummary = summarizeRoster(strategy.quantities);
-    card.innerHTML = `
-      <div class="strategy-title">
-        <strong>${strategy.name}</strong>
-        <span class="tag">Base ${strategy.baseCost}</span>
-      </div>
-      <div class="microcopy">${strategy.narrative}</div>
-      <div class="metrics-row" style="margin-top: 12px">
-        <span class="metric-pill">${rosterSummary.humans} humans</span>
-        <span class="metric-pill">${rosterSummary.robots} robots</span>
-      </div>
-      <div class="bars">
-        ${renderBar("Efficiency", strategy.profile.efficiency)}
-        ${renderBar("Safety", strategy.profile.safety)}
-        ${renderBar("Manual", strategy.profile.manual)}
-      </div>
-    `;
-    strategyListEl.appendChild(card);
-  });
-}
-
-function renderTaskBoard(metrics) {
-  const workerCatalog = getWorkerCatalog();
-  taskBoardEl.innerHTML = "";
-  taskDefinitions.forEach((task) => {
-    const taskMeta = getTaskMeta(task.id);
-    const taskAssignments = state.placements[task.id];
-    const warnings = metrics.taskWarnings[task.id];
-    const uniqueTaskAssignments = getUniqueAssignmentsForTask(task.id, state.placements);
-    const dropHint = uniqueTaskAssignments.length ? `${uniqueTaskAssignments.length} ${t("crewAssigned")}` : t("dragCrewHere");
-
-    const card = document.createElement("div");
-    card.className = `task-card socket ${warnings.length ? "warning" : ""}`;
-    card.dataset.taskId = task.id;
-    card.innerHTML = `
-      <div class="task-title">
-        <div class="task-title-group">
-          <strong class="task-name-with-tooltip">
-            ${taskMeta.name}
-            <span class="task-tooltip">${taskMeta.note}</span>
-          </strong>
-        </div>
-        <span class="tag">${t("station")} ${taskDefinitions.findIndex((item) => item.id === task.id) + 1}</span>
-      </div>
-      <div class="drop-zone ${taskAssignments.length ? "filled" : ""}">
-        ${
-          taskAssignments.length
-            ? `
-              <div class="assignment-stack">
-                ${uniqueTaskAssignments
-                  .map((placement) => {
-                    const assignment = getAssignmentDisplay(placement.assignmentId, placement.workerId, placement.coveredTasks);
-                    const worker = workerCatalog[assignment.workerId];
-                    return `
-                      <div class="assignment-chip">
-                        <strong>${worker.name}</strong>
-                        <span class="worker-type">${worker.type} • ${assignment.coveredTasks.length} task${assignment.coveredTasks.length > 1 ? "s" : ""}</span>
-                        <span class="microcopy">Covers: ${assignment.coveredTasks.map(labelizeTask).join(" + ")}</span>
-                                        <button class="button ghost clear-assignment" data-assignment-id="${assignment.assignmentId}" type="button">${t("clear")}</button>
-                      </div>
-                    `;
-                  })
-                  .join("")}
-              </div>
-            `
-            : `<div class="drop-copy">${dropHint}<br /><span class="microcopy">${taskMeta.name.toUpperCase()}</span></div>`
-        }
-        <div class="socket-tooltip">Robot coverage preferred; human-only coverage uses Construction Workers.</div>
-      </div>
-      <div class="microcopy">Extra crew boosts efficiency most, with weaker effects on safety and manual work.</div>
-      ${warnings.length ? `<div class="warning-list">${warnings.map((warning) => `<div class="warning-pill">${warning}</div>`).join("")}</div>` : ""}
-    `;
-    taskBoardEl.appendChild(card);
-  });
-
-  taskBoardEl.querySelectorAll(".socket").forEach((socket) => {
-    socket.addEventListener("dragover", (event) => {
-      event.preventDefault();
-      socket.classList.add("dragover");
-    });
-    socket.addEventListener("dragleave", () => socket.classList.remove("dragover"));
-    socket.addEventListener("drop", (event) => {
-      event.preventDefault();
-      socket.classList.remove("dragover");
-      const workerId = event.dataTransfer.getData("text/plain");
-      if (workerId) placeCrew(workerId, socket.dataset.taskId);
-    });
-  });
-  taskBoardEl.querySelectorAll(".clear-assignment").forEach((button) => {
-    button.addEventListener("click", () => clearAssignment(button.dataset.assignmentId));
-  });
-}
-
-function renderSimulationBoard(metrics) {
-  const stageCards = taskDefinitions
-    .map((task) => {
-      const taskMeta = getTaskMeta(task.id);
-      const stage = state.simulation.stages[task.id];
-      const dynamic = metrics.taskDynamics[task.id];
-      const waitingBlocks = [...stage.queue, ...stage.parked];
+  progressListEl.innerHTML = items
+    .map((item) => {
+      const ratio = item.target > 0 ? item.value / item.target : 0;
+      const clamped = Math.max(0, Math.min(100, ratio * 100));
+      const overLimit = item.intent === "lower" && item.value > item.target;
+      const belowTarget = item.intent === "higher" && item.value < item.target;
       return `
-        <div class="sim-stage ${stage.active ? "busy" : ""} ${dynamic ? "" : "inactive"}">
-          <div class="sim-stage-head">
-            <strong>${taskMeta.name}</strong>
-            <span class="tag">${dynamic ? `${Math.round(dynamic.duration)}ms` : "off"}</span>
+        <div class="progress-row ${overLimit || belowTarget ? "at-risk" : "ok"}">
+          <div class="progress-label">
+            <span>${item.label}</span>
+            <strong>${formatNumber(item.value)} / ${item.target} ${item.suffix}</strong>
           </div>
-          <div class="sim-stage-meta">
-            <span>${dynamic ? `${t("efficiency")} ${dynamic.efficiency}` : t("noCrew")}</span>
-            <span>${dynamic ? `Crew ${dynamic.crewCount}` : ""}</span>
-          </div>
-          <div class="sim-stage-processor">
-            ${stage.active ? `<div class="sim-block active"></div>` : `<div class="sim-square-placeholder"></div>`}
-          </div>
-          <div class="sim-stage-buffer">
-            ${
-              waitingBlocks.length
-                ? waitingBlocks.map(() => `<div class="sim-block"></div>`).join("")
-                : `<div class="sim-placeholder">${t("noBlocks")}</div>`
-            }
+          <div class="progress-track">
+            <span style="width:${clamped}%"></span>
           </div>
         </div>
       `;
     })
     .join("");
-
-  simulationBoardEl.innerHTML = `
-    <div class="sim-source">
-      <div class="sim-column-head">
-        <strong>${t("incoming")}</strong>
-        <span class="tag">${state.simulation.pending.length}</span>
-      </div>
-      <div class="sim-strip">
-        ${state.simulation.pending.map(() => `<div class="sim-block"></div>`).join("")}
-      </div>
-    </div>
-    ${stageCards}
-    <div class="sim-target">
-      <div class="sim-column-head">
-        <strong>${t("completed")}</strong>
-        <span class="tag">${state.simulation.completed.length}/9</span>
-      </div>
-      <div class="sim-grid">
-        ${Array.from({ length: 9 }, (_, index) => {
-          const block = state.simulation.completed[index];
-          return block ? `<div class="sim-block done"></div>` : `<div class="sim-grid-slot"></div>`;
-        }).join("")}
-      </div>
-    </div>
-  `;
 }
 
-function renderOutcomePanel(strategy, metrics) {
-  const weights = state.config.weights;
-  const warningMarkup = metrics.warnings.length
-    ? metrics.warnings.map((warning) => `<div class="warning-pill">${warning}</div>`).join("")
-    : `<div class="role-pill">All construction zones are covered and ready for execution.</div>`;
-
-  const round1Markup = metrics.round1Checks
-    .map(
-      (check) => `
-        <div class="check-row ${check.pass ? "pass" : "fail"}">
-          <span>${check.label}</span>
-          <strong>${check.pass ? t("pass") : t("fail")}</strong>
-          <div class="microcopy">${check.detail}</div>
-        </div>
-      `
-    )
-    .join("");
-
-  const round2Markup = metrics.round2Checks
-    .map(
-      (check) => `
-        <div class="check-row ${check.pass ? "pass" : "fail"}">
-          <span>${check.label}</span>
-          <strong>${check.pass ? t("pass") : t("fail")}</strong>
-          <div class="microcopy">${check.detail}</div>
-        </div>
-      `
-    )
-    .join("");
-
-  outcomePanelEl.innerHTML = `
-    <div class="score-card">
-      <div class="panel-kicker">${t("predictedFinalScore")}</div>
-      <div class="stat-value">${metrics.finalScore}</div>
-      <div class="score-line"><span>${t("weightedPerformance")}</span><strong>${metrics.performanceScore}</strong></div>
-      <div class="score-line"><span>${t("strategyFitBonus")}</span><strong>${metrics.strategyBonus >= 0 ? "+" : ""}${metrics.strategyBonus}</strong></div>
-      <div class="score-line"><span>${t("budgetPenalty")}</span><strong>-${metrics.budgetPenalty}</strong></div>
-    </div>
-    <div class="stat-grid">
-      <div class="stat-card"><div class="metric-label">${t("targetCapacity")}</div><span class="stat-value">${metrics.totalCapacity}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("efficiency")}</div><span class="stat-value">${metrics.efficiency}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("safety")}</div><span class="stat-value">${metrics.safety}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("manualEffort")}</div><span class="stat-value">${metrics.manualReduction}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("budgetStatus")}</div><span class="stat-value">${metrics.totalCost}/${budgetLimit}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("robotShare")}</div><span class="stat-value">${Math.round(metrics.robotShare * 100)}%</span></div>
-    </div>
-    <div class="check-section">
-      <div class="panel-subhead">${t("round1")}</div>
-      ${round1Markup}
-      <div class="panel-subhead" style="margin-top: 12px">${t("round2")}</div>
-      ${round2Markup}
-    </div>
-    <div class="warning-list" style="margin-top: 14px">${warningMarkup}</div>
-  `;
-}
-
-function renderWorkerPool(strategy) {
-  const workerCatalog = getWorkerCatalog();
-  workerPoolEl.innerHTML = "";
-  Object.values(workerCatalog).forEach((worker) => {
-    const remaining = getRemainingCount(strategy, worker.id, state.placements);
-    const unavailable = remaining !== "unlimited" && remaining <= 0;
-    const workerValues = summarizeWorkerValues(worker);
-    const card = document.createElement("article");
-    card.className = `worker-card draggable-card ${unavailable ? "assigned" : ""}`;
-    card.draggable = !unavailable;
-    card.dataset.workerId = worker.id;
-    card.innerHTML = `
-      <span class="worker-cost-tag">${worker.cost}</span>
-      <div class="worker-name"><strong>${worker.name}</strong></div>
-      <div class="mini-bars">
-        ${renderMiniBar(t("efficiency"), workerValues.efficiency)}
-        ${renderMiniBar(t("safety"), workerValues.safety)}
-        ${renderMiniBar(t("manualReduction"), workerValues.manualReduction)}
-      </div>
-      <span class="worker-quantity-badge">${formatQuantity(remaining)}</span>
-    `;
-    if (!unavailable) {
-      card.addEventListener("dragstart", (event) => {
-        event.dataTransfer.setData("text/plain", worker.id);
-        event.dataTransfer.effectAllowed = "move";
-        card.classList.add("dragging");
-      });
-      card.addEventListener("dragend", () => card.classList.remove("dragging"));
-    }
-    workerPoolEl.appendChild(card);
-  });
-}
-
-function renderVariants() {
-  variantListEl.innerHTML = "";
-  if (!state.variants.length) {
-    variantListEl.innerHTML = `<div class="empty-state">Save a setup to compare strategy, score, and crew composition.</div>`;
-    return;
-  }
-  state.variants.forEach((variant) => {
-    const card = document.createElement("article");
-    card.className = `variant-card ${variant.id === state.selectedVariantId ? "selected" : ""}`;
-    card.innerHTML = `
-      <div class="variant-title">
-        <strong>${variant.name}</strong>
-        <span class="tag">${variant.metrics.finalScore}</span>
-      </div>
-      <div class="variant-summary">
-        <span class="metric-pill">${variant.strategyName}</span>
-        <span class="metric-pill">Cost ${variant.metrics.totalCost}</span>
-        <span class="metric-pill">Robots ${variant.metrics.robotCount}</span>
-      </div>
-      <div class="microcopy">Humans ${variant.metrics.humanCount} • Covered tasks ${variant.metrics.coveredTasks}/4</div>
-      <div class="compare-actions" style="margin-top: 12px">
-        <button class="button ghost" data-action="load" data-id="${variant.id}" type="button">Load</button>
-        <button class="button ghost" data-action="delete" data-id="${variant.id}" type="button">Delete</button>
-      </div>
-    `;
-    variantListEl.appendChild(card);
-  });
-  variantListEl.querySelectorAll("button").forEach((button) => {
-    button.addEventListener("click", () => {
-      if (button.dataset.action === "load") loadVariant(button.dataset.id);
-      if (button.dataset.action === "delete") deleteVariant(button.dataset.id);
-    });
-  });
-}
-
-function placeCrew(workerId, targetTaskId) {
-  const strategy = getSelectedStrategy();
-  const remaining = getRemainingCount(strategy, workerId, state.placements);
-  if (remaining !== "unlimited" && remaining <= 0) return;
-  const worker = getWorkerCatalog()[workerId];
-  const coverageTasks = resolveCoverageTasks(worker, targetTaskId);
-  if (!coverageTasks.length) return;
-  const assignmentId = crypto.randomUUID();
-  coverageTasks.forEach((taskId) => {
-    state.placements[taskId].push({ assignmentId, workerId: worker.id, coveredTasks: coverageTasks });
-  });
-  resetSimulationStateOnly();
-  state.selectedVariantId = null;
-  render();
-}
-
-function clearAssignment(assignmentId) {
-  resetSimulationStateOnly();
-  taskDefinitions.forEach((task) => {
-    state.placements[task.id] = state.placements[task.id].filter((placement) => placement.assignmentId !== assignmentId);
-  });
-  state.selectedVariantId = null;
-  render();
-}
-
-
-function saveVariant() {
-  const strategy = getSelectedStrategy();
-  const metrics = evaluateSetup(strategy, state.placements);
-  state.variants = [
-    {
-      id: crypto.randomUUID(),
-      name: strategy.name,
-      strategyId: strategy.id,
-      strategyName: strategy.name,
-      placements: structuredClone(state.placements),
-      metrics,
-    },
-    ...state.variants,
-  ].slice(0, maxVariants);
-  state.selectedVariantId = state.variants[0].id;
-  render();
-}
-
-function loadVariant(variantId) {
-  const variant = state.variants.find((item) => item.id === variantId);
-  if (!variant) return;
-  state.selectedStrategyId = variant.strategyId;
-  state.placements = structuredClone(variant.placements);
-  resetSimulationStateOnly();
-  state.selectedVariantId = variant.id;
-  render();
-}
-
-function deleteVariant(variantId) {
-  state.variants = state.variants.filter((item) => item.id !== variantId);
-  if (state.selectedVariantId === variantId) state.selectedVariantId = null;
-  render();
-}
-
-function evaluateSetup(strategy, placements) {
-  const workerCatalog = getWorkerCatalog();
-  const uniqueAssignments = new Map();
-  taskDefinitions.forEach((task) => {
-    placements[task.id].forEach((placement) => {
-      if (!uniqueAssignments.has(placement.assignmentId)) uniqueAssignments.set(placement.assignmentId, placement.workerId);
-    });
-  });
-
-  const assignedCounts = Object.fromEntries(
-    Object.keys(workerCatalog).map((workerId) => [workerId, getAssignedCountByWorker(workerId, placements)])
-  );
-
-  const totalHumanCount = Object.entries(strategy.quantities).reduce((sum, [workerId, quantity]) => {
-    const worker = workerCatalog[workerId];
-    if (!worker || worker.type !== "Human") return sum;
-    if (quantity === "unlimited") return sum + assignedCounts[workerId];
-    return sum + quantity;
-  }, 0);
-
-  const totalRobotCount = Object.entries(strategy.quantities).reduce((sum, [workerId, quantity]) => {
-    const worker = workerCatalog[workerId];
-    if (!worker || worker.type !== "Robot") return sum;
-    if (quantity === "unlimited") return sum + assignedCounts[workerId];
-    return sum + quantity;
-  }, 0);
-
-  const robotCapacity = Object.entries(strategy.quantities).reduce((sum, [workerId, quantity]) => {
-    const worker = workerCatalog[workerId];
-    if (!worker || worker.type !== "Robot") return sum;
-    const count = quantity === "unlimited" ? assignedCounts[workerId] : quantity;
-    return sum + (worker.capacity || 0) * count;
-  }, 0);
-
-  const totalCapacity = robotCapacity + totalHumanCount;
-  const robotShare = totalCapacity ? robotCapacity / totalCapacity : 0;
-  const assignedHumanCount = Object.entries(workerCatalog).reduce((sum, [workerId, worker]) => {
-    if (worker.type !== "Human") return sum;
-    return sum + assignedCounts[workerId];
-  }, 0);
-
-  const supportedRobots = Object.entries(strategy.quantities).reduce((sum, [workerId, quantity]) => {
-    const worker = workerCatalog[workerId];
-    if (!worker || worker.type !== "Robot") return sum;
-    const count = quantity === "unlimited" ? assignedCounts[workerId] : quantity;
-    return sum + (worker.supportLoad || 0) * count;
-  }, 0);
-
-  const unassignedHumanCount = Math.max(0, totalHumanCount - assignedHumanCount);
-  const supportFeasible = totalRobotCount === 0 || unassignedHumanCount >= supportedRobots;
-
-  let totalWorkerCost = 0;
-  Object.entries(strategy.quantities).forEach(([workerId, quantity]) => {
-    const worker = workerCatalog[workerId];
-    if (!worker) return;
-    const count = quantity === "unlimited" ? assignedCounts[workerId] : quantity;
-    totalWorkerCost += count * worker.cost;
-  });
-
-  let coveredTasks = 0;
-  let efficiencySum = 0;
-  let safetySum = 0;
-  let manualReductionSum = 0;
-  const warnings = [];
-  const taskWarnings = {};
-  const taskDynamics = {};
-
-  taskDefinitions.forEach((task) => {
-    taskWarnings[task.id] = [];
-    const taskPlacements = getUniqueAssignmentsForTask(task.id, placements);
-    if (!taskPlacements.length) {
-      taskWarnings[task.id].push("This zone is empty.");
-      return;
-    }
-
-    coveredTasks += 1;
-    const assignmentCount = taskPlacements.length;
-    const taskEfficiencyBase = taskPlacements.reduce((sum, placement) => sum + workerCatalog[placement.workerId].efficiency[task.id], 0);
-    const taskSafetyBase = taskPlacements.reduce((sum, placement) => sum + workerCatalog[placement.workerId].safety[task.id], 0) / assignmentCount;
-    const taskManualBase = taskPlacements.reduce((sum, placement) => sum + workerCatalog[placement.workerId].manualReduction[task.id], 0) / assignmentCount;
-
-    const efficiencyBoost = Math.max(0, assignmentCount - 1) * 6;
-    const safetyPenalty = Math.max(0, assignmentCount - 1) * 2;
-    const manualBoost = Math.max(0, assignmentCount - 1) * 4;
-
-    const effectiveEfficiency = Math.min(100, taskEfficiencyBase / assignmentCount + efficiencyBoost);
-    efficiencySum += effectiveEfficiency;
-    safetySum += Math.max(0, Math.min(100, taskSafetyBase - safetyPenalty));
-    manualReductionSum += Math.min(100, taskManualBase + manualBoost);
-    taskDynamics[task.id] = computeTaskDynamic(assignmentCount, effectiveEfficiency, taskPlacements);
-
-    const humanOnly = taskPlacements.every((placement) => workerCatalog[placement.workerId].type === "Human");
-    const hasHumanSolo = taskPlacements.some((placement) => workerCatalog[placement.workerId].canSoloTask);
-    if (humanOnly && !hasHumanSolo) {
-      taskWarnings[task.id].push("Human-only coverage requires a Construction Worker.");
-    }
-    if (assignmentCount > 1) {
-      taskWarnings[task.id].push("Multi-crew assignments increase throughput but add cost.");
-    }
-  });
-
-  const efficiency = coveredTasks ? Math.round(efficiencySum / taskDefinitions.length) : 0;
-  const safety = coveredTasks ? Math.round(safetySum / taskDefinitions.length) : 0;
-  const manualReduction = coveredTasks ? Math.round(manualReductionSum / taskDefinitions.length) : 0;
-  const weights = state.config.weights;
-  const performanceScore = roundOneDecimal(
-    weights.efficiency * efficiency + weights.safety * safety + weights.manualReduction * manualReduction
-  );
-  const totalCost = strategy.baseCost + totalWorkerCost;
-  const budgetPenalty = totalCost > budgetLimit ? (totalCost - budgetLimit) * 1.8 : 0;
-  const safetyPenalty = Math.max(0, strategy.targets.safety - safety) * 1.2;
-  const finalScore = computeReward({
-    performanceScore,
-    strategyBonus: calculateStrategyBonus(strategy, robotShare),
-    budgetPenalty,
-    efficiency,
-    safety,
-    manualReduction,
-    humanCount: totalHumanCount,
-    robotCount: totalRobotCount,
-    coveredTasks,
-    totalCost,
-    budgetLimit,
-    safetyPenalty,
-  });
-
+function renderChecks(team, metrics) {
+  const actualFit = getRobotShareBehavior(metrics.robotShare);
+  const selectedStrategy = STRATEGIES[team.strategy];
+  const mismatch = actualFit !== selectedStrategy.fitLabel;
   const round1Checks = [
     {
-      id: "humanSupport",
-      label: "Human support feasible",
-      pass: supportFeasible,
-      detail: supportFeasible
-        ? `Support available: ${unassignedHumanCount} unassigned workers for ${supportedRobots} robot support load.`
-        : `Need ${supportedRobots} worker-days but only ${unassignedHumanCount} are available for robot support.`,
+      label: "Human Support Check",
+      state: metrics.humanSupportFeasible ? "pass" : "fail",
+      detail: `${formatNumber(metrics.manualCapacityLeft)} manual worker capacity left after ${formatNumber(metrics.robotSupportLoad)} support load.`,
     },
     {
-      id: "capacityFeasible",
-      label: "Capacity feasible",
-      pass: totalCapacity >= strategy.targets.capacity,
-      detail: `Capacity ${totalCapacity}/${strategy.targets.capacity}.`,
+      label: "Capacity Check",
+      state: metrics.capacityFeasible ? "pass" : "fail",
+      detail: `${formatNumber(metrics.netCapacity)} units/day against ${PROJECT.requiredDailyCapacity}.`,
     },
     {
-      id: "budgetVisible",
-      label: "Budget visibility",
-      pass: true,
-      detail: `Total cost is ${totalCost}/${budgetLimit}.`,
+      label: "Budget Visibility",
+      state: metrics.totalCost <= PROJECT.budgetLimit ? "pass" : "warning",
+      detail: `${formatCredits(metrics.totalCost)} against ${formatCredits(PROJECT.budgetLimit)}. Round 1 winner is lowest feasible cost.`,
     },
   ];
 
   const round2Checks = [
-    {
-      id: "capacityTarget",
-      label: "Capacity >= target",
-      pass: totalCapacity >= strategy.targets.capacity,
-      detail: `Capacity ${totalCapacity}/${strategy.targets.capacity}`,
-    },
-    {
-      id: "productivityTarget",
-      label: "Productivity target",
-      pass: efficiency >= strategy.targets.productivity,
-      detail: `Productivity ${efficiency}/${strategy.targets.productivity}`,
-    },
-    {
-      id: "safetyTarget",
-      label: "Operational safety target",
-      pass: safety >= strategy.targets.safety,
-      detail: `Safety ${safety}/${strategy.targets.safety}`,
-    },
-    {
-      id: "manualTarget",
-      label: "Manual effort reduction target",
-      pass: manualReduction >= strategy.targets.manual,
-      detail: `Effort reduction ${manualReduction}/${strategy.targets.manual}`,
-    },
-    {
-      id: "budgetCheck",
-      label: "Budget check",
-      pass: totalCost <= budgetLimit,
-      detail: totalCost <= budgetLimit ? "Within budget." : `Over budget by ${totalCost - budgetLimit}.`,
-    },
-    {
-      id: "strategyFit",
-      label: "HRC strategy fit",
-      pass: robotShare >= strategy.fitRange.min && robotShare <= strategy.fitRange.max,
-      detail: `Robot capacity share ${Math.round(robotShare * 100)}% (${Math.round(strategy.fitRange.min * 100)}%–${Math.round(strategy.fitRange.max * 100)}%).`,
-    },
+    { label: "Budget <= 200", state: metrics.totalCost <= PROJECT.budgetLimit ? "pass" : "fail", detail: formatCredits(metrics.totalCost) },
+    { label: "Capacity >= 20", state: metrics.capacityFeasible ? "pass" : "fail", detail: `${formatNumber(metrics.netCapacity)} units/day` },
+    { label: "Productivity >= 70", state: metrics.productivity >= 70 ? "pass" : "fail", detail: formatNumber(metrics.productivity) },
+    { label: "Operational Safety >= 70", state: metrics.safety >= 70 ? "pass" : "fail", detail: formatNumber(metrics.safety) },
+    { label: "Effort Reduction >= 70", state: metrics.effort >= 70 ? "pass" : "fail", detail: formatNumber(metrics.effort) },
+    { label: "Human Support Feasible", state: metrics.humanSupportFeasible ? "pass" : "fail", detail: `${formatNumber(metrics.robotSupportLoad)} support load` },
+    { label: "HRC Strategy Fit", state: metrics.strategyFit ? "pass" : "fail", detail: `${selectedStrategy.name} selected, ${formatPercent(metrics.robotShare)} robot share` },
   ];
 
-  taskDefinitions.forEach((task) => {
-    taskWarnings[task.id].forEach((warning) => warnings.push(`${labelizeTask(task.id)}: ${warning}`));
-  });
-  if (!totalRobotCount) warnings.push("At least one robot unit is needed for a valid construction plan.");
-  if (totalCost > budgetLimit) warnings.push(`Over budget by ${totalCost - budgetLimit}. Final score is penalized.`);
-  if (totalCapacity >= strategy.targets.capacity && supportFeasible && totalRobotCount && !warnings.length) warnings.push("This team plan passes feasibility and is ready for comparison.");
+  checksListEl.innerHTML = `
+    <div class="fit-card ${mismatch ? "warning" : "pass"}">
+      <div>
+        <span class="panel-kicker">HRC Strategy Fit Visual</span>
+        <strong>${selectedStrategy.name}</strong>
+        <p>Actual robot capacity share: ${formatPercent(metrics.robotShare)}</p>
+      </div>
+      <div class="share-meter">
+        <span style="left:${Math.max(0, Math.min(100, metrics.robotShare * 100))}%"></span>
+      </div>
+      ${mismatch ? `<p class="strategy-warning">Strategy Mismatch: your resource mix behaves like ${actualFit}.</p>` : `<p class="strategy-ok">Selected strategy matches the resource behavior.</p>`}
+    </div>
 
-  return {
-    totalCost,
-    efficiency,
-    safety,
-    manualReduction,
-    performanceScore,
-    strategyBonus: calculateStrategyBonus(strategy, robotShare),
-    budgetPenalty,
-    safetyPenalty,
-    finalScore,
-    humanCount: totalHumanCount,
-    robotCount: totalRobotCount,
-    totalCapacity,
-    robotCapacity,
-    robotShare,
-    supportedRobots,
-    supportFeasible,
-    round1Checks,
-    round2Checks,
-    coveredTasks,
-    warnings,
-    taskWarnings,
-    taskDynamics,
-  };
+    <div class="check-columns">
+      <div>
+        <h3>Round 1: Cost-Driven Design</h3>
+        ${round1Checks.map(renderCheckRow).join("")}
+      </div>
+      <div>
+        <h3>Round 2: Target Value Design</h3>
+        ${round2Checks.map(renderCheckRow).join("")}
+      </div>
+    </div>
+  `;
 }
 
-function computeReward(context) {
-  try {
-    const runner = new Function(...Object.keys(context), `return ${state.config.rewardFormula};`);
-    const result = runner(...Object.values(context));
-    return Number.isFinite(result) ? result : 0;
-  } catch {
-    return 0;
-  }
+function renderCheckRow(check) {
+  return `
+    <article class="check-row ${check.state}">
+      <div>
+        <strong>${check.label}</strong>
+        <p>${check.detail}</p>
+      </div>
+      <span class="badge ${check.state}">${check.state.toUpperCase()}</span>
+    </article>
+  `;
 }
 
-function calculateStrategyBonus(strategy, robotShare) {
-  const { min, max } = strategy.fitRange;
-  if (robotShare >= min && robotShare <= max) return 12;
-  const gap = Math.min(Math.abs(robotShare - min), Math.abs(robotShare - max));
-  if (gap <= 0.1) return 4;
-  return -6;
+function renderComparison(allMetrics, winners) {
+  comparisonSummaryEl.innerHTML = `
+    <div class="winner-strip">
+      <div><span>Round 1 Winner</span><strong>${winners.round1 ? winners.round1.team.label : "No feasible team"}</strong></div>
+      <div><span>Round 2 Winner</span><strong>${winners.round2 ? winners.round2.team.label : "No eligible team"}</strong></div>
+      <div><span>Round 2 Rule</span><strong>Highest eligible value score, then lower cost</strong></div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Team</th>
+            <th>Round 1 Feasible?</th>
+            <th>Round 1 Cost</th>
+            <th>Round 2 Eligible?</th>
+            <th>Cost</th>
+            <th>Capacity</th>
+            <th>Robot Share</th>
+            <th>Productivity</th>
+            <th>Safety</th>
+            <th>Effort Reduction</th>
+            <th>Value Score</th>
+            <th>Winner</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${allMetrics
+            .map(({ team, metrics }) => {
+              const winnerText = [
+                winners.round1?.team.id === team.id ? "Round 1" : "",
+                winners.round2?.team.id === team.id ? "Round 2" : "",
+              ]
+                .filter(Boolean)
+                .join(" + ");
+              return `
+                <tr class="${team.id === state.activeTeamId ? "selected" : ""}">
+                  <td><strong>${team.label}</strong><br /><span>${STRATEGIES[team.strategy].name}</span></td>
+                  <td>${badge(metrics.round1Feasible ? "PASS" : "FAIL", metrics.round1Feasible ? "pass" : "fail")}</td>
+                  <td>${formatCredits(metrics.totalCost)}</td>
+                  <td>${badge(metrics.round2Eligible ? "PASS" : "FAIL", metrics.round2Eligible ? "pass" : "fail")}</td>
+                  <td>${formatCredits(metrics.totalCost)}</td>
+                  <td>${formatNumber(metrics.netCapacity)}</td>
+                  <td>${formatPercent(metrics.robotShare)}</td>
+                  <td>${formatNumber(metrics.productivity)}</td>
+                  <td>${formatNumber(metrics.safety)}</td>
+                  <td>${formatNumber(metrics.effort)}</td>
+                  <td>${formatNumber(metrics.valueScore)}</td>
+                  <td>${winnerText || "-"}</td>
+                </tr>
+              `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
-function summarizeRoster(quantities) {
-  return Object.entries(quantities).reduce(
-    (summary, [workerId, quantity]) => {
-      if (quantity === 0) return summary;
-      const count = quantity === "unlimited" ? 4 : quantity;
-      if (getWorkerCatalog()[workerId].type === "Human") summary.humans += count;
-      else summary.robots += count;
-      return summary;
-    },
-    { humans: 0, robots: 0 }
+function evaluateTeam(team) {
+  const strategy = STRATEGIES[team.strategy];
+  const workers = getResourceValue(team, "workers");
+  const basicRobots = getResourceValue(team, "basicRobots");
+  const advancedRobots = getResourceValue(team, "advancedRobots");
+  const fleets = getResourceValue(team, "fleets");
+
+  const robotSupportLoad =
+    basicRobots * RESOURCES.basicRobots.supportLoad +
+    advancedRobots * RESOURCES.advancedRobots.supportLoad +
+    fleets * RESOURCES.fleets.supportLoad;
+  const manualCapacityLeft = workers - robotSupportLoad;
+  const robotCapacity =
+    basicRobots * RESOURCES.basicRobots.capacity +
+    advancedRobots * RESOURCES.advancedRobots.capacity +
+    fleets * RESOURCES.fleets.capacity;
+  const netCapacity = robotCapacity + manualCapacityLeft;
+  const safeNetCapacity = Math.max(0, netCapacity);
+  const robotShare = safeNetCapacity > 0 ? robotCapacity / safeNetCapacity : 0;
+  const humanSupportFeasible = manualCapacityLeft >= 0;
+  const capacityFeasible = netCapacity >= PROJECT.requiredDailyCapacity;
+
+  const totalCost =
+    strategy.cost +
+    workers * RESOURCES.workers.cost +
+    basicRobots * RESOURCES.basicRobots.cost +
+    advancedRobots * RESOURCES.advancedRobots.cost +
+    fleets * RESOURCES.fleets.cost;
+
+  const productivity =
+    50 +
+    strategy.productivity +
+    basicRobots * RESOURCES.basicRobots.productivity +
+    advancedRobots * RESOURCES.advancedRobots.productivity +
+    fleets * RESOURCES.fleets.productivity;
+  const safety =
+    50 +
+    strategy.safety +
+    basicRobots * RESOURCES.basicRobots.safety +
+    advancedRobots * RESOURCES.advancedRobots.safety +
+    fleets * RESOURCES.fleets.safety;
+  const effort =
+    50 +
+    strategy.effort +
+    basicRobots * RESOURCES.basicRobots.effort +
+    advancedRobots * RESOURCES.advancedRobots.effort +
+    fleets * RESOURCES.fleets.effort;
+
+  const valueScore = roundOneDecimal(
+    PROJECT.weights.productivity * productivity +
+      PROJECT.weights.safety * safety +
+      PROJECT.weights.effort * effort
   );
-}
 
-function getAssignmentDisplay(assignmentId, workerId, coveredTasks) {
-  return { assignmentId, workerId, coveredTasks };
-}
+  const strategyFit = isStrategyFit(strategy.id, robotShare);
+  const round1Feasible = humanSupportFeasible && capacityFeasible;
+  const round2Eligible =
+    totalCost <= PROJECT.budgetLimit &&
+    capacityFeasible &&
+    productivity >= PROJECT.scoreTargets.productivity &&
+    safety >= PROJECT.scoreTargets.safety &&
+    effort >= PROJECT.scoreTargets.effort &&
+    humanSupportFeasible &&
+    strategyFit;
 
-function computeTaskDynamic(assignmentCount, effectiveEfficiency, taskPlacements) {
-  const supportCount = taskPlacements.filter((placement) => placement.supportGeneralist).length;
-  const power = Math.max(1, effectiveEfficiency + assignmentCount * 10 + supportCount * 4);
   return {
-    efficiency: Math.round(effectiveEfficiency),
-    crewCount: assignmentCount,
-    power,
-    duration: Math.max(180, 1500 - power * 10),
+    robotSupportLoad,
+    manualCapacityLeft,
+    robotCapacity,
+    netCapacity,
+    robotShare,
+    humanSupportFeasible,
+    capacityFeasible,
+    totalCost,
+    productivity,
+    safety,
+    effort,
+    valueScore,
+    strategyFit,
+    round1Feasible,
+    round2Eligible,
   };
 }
 
-function getUniqueAssignmentsForTask(taskId, placements) {
-  const seen = new Set();
-  return placements[taskId].filter((placement) => {
-    if (seen.has(placement.assignmentId)) return false;
-    seen.add(placement.assignmentId);
-    return true;
-  });
-}
+function calculateWinners(allMetrics) {
+  const round1Candidates = allMetrics
+    .filter(({ metrics }) => metrics.round1Feasible)
+    .sort((a, b) => a.metrics.totalCost - b.metrics.totalCost || b.metrics.netCapacity - a.metrics.netCapacity);
 
-function getPlacementByAssignmentId(assignmentId, placements) {
-  for (const task of taskDefinitions) {
-    const found = placements[task.id].find((placement) => placement.assignmentId === assignmentId);
-    if (found) return found;
-  }
-  return null;
-}
+  const round2Candidates = allMetrics
+    .filter(({ metrics }) => metrics.round2Eligible)
+    .sort((a, b) => b.metrics.valueScore - a.metrics.valueScore || a.metrics.totalCost - b.metrics.totalCost);
 
-function resolveCoverageTasks(worker, targetTaskId) {
-  if (worker.mode === "single") return worker.allowedTasks.includes(targetTaskId) ? [targetTaskId] : [];
-  return worker.coverage.includes(targetTaskId) ? worker.coverage : [];
-}
-
-function getWorkerPreviewTasks(worker) {
-  return worker.mode === "single" ? worker.allowedTasks : worker.coverage;
-}
-
-function getAssignedCountByWorker(workerId, placements) {
-  const assignmentIds = new Set();
-  taskDefinitions.forEach((task) => {
-    placements[task.id].forEach((placement) => {
-      if (placement.workerId === workerId) assignmentIds.add(placement.assignmentId);
-    });
-  });
-  return assignmentIds.size;
-}
-
-function getRemainingCount(strategy, workerId, placements) {
-  const quantity = strategy.quantities[workerId] ?? 0;
-  if (quantity === "unlimited") return "unlimited";
-  return quantity - getAssignedCountByWorker(workerId, placements);
-}
-
-function formatQuantity(quantity) {
-  return quantity === "unlimited" ? "∞" : quantity;
-}
-
-function summarizeWorkerValues(worker) {
-  const previewTasks = getWorkerPreviewTasks(worker);
-  const taskCount = previewTasks.length || 1;
   return {
-    efficiency: Math.round(previewTasks.reduce((sum, taskId) => sum + worker.efficiency[taskId], 0) / taskCount),
-    safety: Math.round(previewTasks.reduce((sum, taskId) => sum + worker.safety[taskId], 0) / taskCount),
-    manualReduction: Math.round(previewTasks.reduce((sum, taskId) => sum + worker.manualReduction[taskId], 0) / taskCount),
+    round1: round1Candidates[0] || null,
+    round2: round2Candidates[0] || null,
   };
 }
 
-function renderBar(label, value) {
-  const numericValue = Number(value) || 0;
-  const magnitude = clampMiniBarMagnitude(numericValue);
-  const directionClass = numericValue < 0 ? "negative" : "positive";
-  return `
-    <div class="bar">
-      <span>${label}</span>
-      <div class="mini-bar-track">
-        <div class="mini-bar-zero"></div>
-        <div class="mini-bar-fill ${directionClass}" style="${getMiniBarStyle(numericValue, magnitude)}"></div>
-      </div>
-      <strong>${numericValue}</strong>
-    </div>
-  `;
+function isStrategyFit(strategyId, robotShare) {
+  if (strategyId === "human") return robotShare <= 0.35;
+  if (strategyId === "collaborative") return robotShare > 0.35 && robotShare < 0.75;
+  return robotShare >= 0.75;
 }
 
-function renderMiniBar(label, value) {
-  const numericValue = Number(value) || 0;
-  const magnitude = clampMiniBarMagnitude(numericValue);
-  const directionClass = numericValue < 0 ? "negative" : "positive";
-  return `
-    <div class="mini-bar">
-      <span class="microcopy">${label}</span>
-      <div class="mini-bar-track">
-        <div class="mini-bar-zero"></div>
-        <div class="mini-bar-fill ${directionClass}" style="${getMiniBarStyle(numericValue, magnitude)}"></div>
-      </div>
-    </div>
-  `;
+function getRobotShareBehavior(robotShare) {
+  if (robotShare <= 0.35) return "Human-Led";
+  if (robotShare < 0.75) return "Collaborative";
+  return "Robot-Led";
 }
 
-function clampMiniBarMagnitude(value) {
-  return Math.max(0, Math.min(100, Math.abs(Number(value) || 0)));
+function getResourceValue(team, resourceId) {
+  const value = Number(team.resources?.[resourceId]);
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
 }
 
-function getMiniBarStyle(value, magnitude) {
-  if (value < 0) {
-    return `left:${50 - magnitude / 2}%; width:${magnitude / 2}%`;
-  }
-  return `left:50%; width:${magnitude / 2}%`;
+function clampQuantity(value) {
+  return Math.max(0, Math.min(30, Number.isFinite(value) ? Math.round(value) : 0));
 }
 
-function labelizeTask(taskId) {
-  return getTaskMeta(taskId).name || taskId;
+function formatCredits(value) {
+  return `${formatNumber(value)} credits`;
+}
+
+function formatNumber(value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return "0";
+  return Number.isInteger(numeric) ? `${numeric}` : numeric.toFixed(1);
+}
+
+function formatPercent(value) {
+  const numeric = Number.isFinite(value) ? value : 0;
+  return `${Math.round(numeric * 100)}%`;
+}
+
+function signed(value) {
+  return value >= 0 ? `+${value}` : `${value}`;
 }
 
 function roundOneDecimal(value) {
   return Math.round(value * 10) / 10;
+}
+
+function badge(text, stateName) {
+  return `<span class="badge ${stateName}">${text}</span>`;
 }

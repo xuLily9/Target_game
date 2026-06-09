@@ -17,89 +17,82 @@
       <header class="topbar">
         <div>
           <p class="eyebrow">Construction Site of the Future</p>
-          <h1>Plan the human-robot crew for the next site operation.</h1>
+          <h1>Human-Robot Material Logistics Target Value Design Game</h1>
         </div>
         <div class="topbar-actions">
-          <div class="mode-toggle" id="mode-toggle"></div>
           <a class="button ghost" href="./team.html">Team Setup</a>
-          <div class="topbar-stats" id="topbar-stats"></div>
+          <button class="button ghost" id="reset-all" type="button">Reset Plans</button>
         </div>
       </header>
 
-      <section class="panel setup-panel hidden" id="setup-panel">
-        <div class="panel-head">
-          <p class="panel-kicker">Setup Mode</p>
-          <h2 id="setup-panel-title">Configure Values, Crew, Weights, and Reward</h2>
-        </div>
-        <div class="setup-actions">
-          <button id="save-setup" class="button primary">Save Setup</button>
-          <button id="reset-setup-config" class="button ghost">Reset Config</button>
-        </div>
-        <div id="setup-editor" class="setup-editor"></div>
-      </section>
-
       <main class="workspace">
-        <section class="panel strategy-panel">
-          <div class="panel-head">
-            <p class="panel-kicker" id="step1-kicker">Step 1</p>
-            <h2 id="step1-title">Choose Strategy</h2>
+        <section class="panel project-brief">
+          <div>
+            <p class="panel-kicker">Project Requirements</p>
+            <h2>Move 100 units from temporary storage to work zones in 5 days.</h2>
           </div>
-          <div id="strategy-list" class="strategy-list strategy-list-horizontal"></div>
+          <div class="brief-grid">
+            <div class="brief-item"><span>Total Demand</span><strong>100 units</strong></div>
+            <div class="brief-item"><span>Completion Time</span><strong>5 days</strong></div>
+            <div class="brief-item"><span>Daily Capacity Target</span><strong>20 units/day</strong></div>
+            <div class="brief-item"><span>Budget Limit</span><strong>200 credits</strong></div>
+          </div>
         </section>
 
-        <div class="main-columns">
-          <div class="primary-stack">
-            <section class="panel roster-panel">
-              <div class="panel-head">
-                <p class="panel-kicker" id="crew-kicker">Crew View</p>
-                <h2 id="crew-title">Available Crew</h2>
-              </div>
-              <div id="worker-pool" class="worker-pool"></div>
-            </section>
+        <section class="team-tabs panel" id="team-tabs" aria-label="Teams"></section>
 
-            <section class="panel board-panel">
-              <div class="panel-head panel-head-inline">
-                <p class="panel-kicker" id="step2-kicker">Step 2</p>
-                <div class="panel-head-row">
-                  <h2 id="step2-title">Cover Every Task</h2>
-                  <div class="board-legend board-legend-inline">
-                    <span class="legend-chip" id="legend-1">Task sockets accept one crew unit</span>
-                    <span class="legend-chip" id="legend-2">Multi-task robots span adjacent sockets</span>
-                    <span class="legend-chip" id="legend-3">Human-only coverage requires Skilled Foreman</span>
-                  </div>
-                </div>
-              </div>
-              <div id="task-board" class="task-board"></div>
-              <div class="simulation-actions">
-                <button id="run-simulation" class="button primary">Run Simulation</button>
-                <button id="reset-simulation" class="button ghost">Reset Flow</button>
-              </div>
-              <div id="simulation-board" class="simulation-board"></div>
-            </section>
+        <section class="dashboard-grid">
+          <section class="panel controls-panel">
+            <div class="panel-head">
+              <p class="panel-kicker">Resource Plan</p>
+              <h2 id="active-team-title">Team A</h2>
+            </div>
+            <div id="strategy-controls" class="strategy-controls"></div>
+            <div id="resource-controls" class="resource-controls"></div>
+          </section>
 
-            <section class="panel compare-panel">
-              <div class="panel-head">
-                <p class="panel-kicker" id="variants-kicker">Variants</p>
-                <h2 id="variants-title">Save and Compare Setups</h2>
-              </div>
-              <div class="compare-actions">
-                <button id="save-variant" class="button primary">Save Current Variant</button>
-                <button id="reset-setup" class="button ghost">Reset Setup</button>
-              </div>
-              <div id="variant-list" class="variant-list"></div>
-            </section>
+          <section class="panel site-panel">
+            <div class="panel-head">
+              <p class="panel-kicker">Site Flow Visual</p>
+              <h2>Temporary Storage to Work Zones</h2>
+            </div>
+            <div id="site-visual" class="site-visual"></div>
+          </section>
+        </section>
+
+        <section class="panel kpi-panel">
+          <div class="panel-head">
+            <p class="panel-kicker">Simulation Dashboard</p>
+            <h2>Live Metrics</h2>
           </div>
+          <div id="kpi-grid" class="kpi-grid"></div>
+        </section>
 
-          <aside class="floating-outcomes">
-            <section class="panel outcomes-panel">
-              <div class="panel-head">
-                <p class="panel-kicker" id="step3-kicker">Step 3</p>
-                <h2 id="step3-title">Review Outcome</h2>
-              </div>
-              <div id="outcome-panel"></div>
-            </section>
-          </aside>
-        </div>
+        <section class="dashboard-grid">
+          <section class="panel progress-panel">
+            <div class="panel-head">
+              <p class="panel-kicker">Targets</p>
+              <h2>Progress Against Constraints</h2>
+            </div>
+            <div id="progress-list" class="progress-list"></div>
+          </section>
+
+          <section class="panel checks-panel">
+            <div class="panel-head">
+              <p class="panel-kicker">Pass / Fail</p>
+              <h2>Round Checks and Strategy Fit</h2>
+            </div>
+            <div id="checks-list" class="checks-list"></div>
+          </section>
+        </section>
+
+        <section class="panel comparison-panel">
+          <div class="panel-head">
+            <p class="panel-kicker">Team Comparison</p>
+            <h2>Round 1 and Round 2 Winners</h2>
+          </div>
+          <div id="comparison-summary" class="comparison-summary"></div>
+        </section>
       </main>
     </div>
 

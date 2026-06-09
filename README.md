@@ -1,75 +1,66 @@
-# HRC Strategy Game Prototype
+# Construction Site of the Future
 
-This repository contains a browser-based prototype for exploring `Human-Robot Collaboration (HRC)` strategies for a wall assembly job.
+Static browser-based workshop game for the **Human-Robot Collaboration Design Challenge**.
+
+The prototype is now a construction material logistics Target Value Design game. Teams plan how to move materials from temporary storage to work zones on a high-rise construction project using workers, basic robots, advanced robots, and autonomous robot fleets.
 
 Live demo:
 [Open The Web Prototype](https://qiming0303.github.io/HRC_game/)
 
-The tool lets players:
+## Scenario
 
-- choose a high-level strategy
-- configure available humans and robots
-- assign crews to four assembly tasks
-- compare tradeoffs between `efficiency`, `safety`, and `reduced manual work`
-- experiment with budget pressure
-- watch a simple block-flow simulation of the assembly pipeline
+- Total project demand: `100 units`
+- Required completion time: `5 days`
+- Required daily capacity: `20 units/day`
+- Budget limit: `200 credits`
 
-It is designed as a lightweight decision-support and playtest platform rather than a full production simulator.
+## Resources
 
-## What The Prototype Does
+| Resource | Cost | Daily Capacity | Human Support |
+| --- | ---: | ---: | ---: |
+| Construction Worker | 10 | 1 | 0 |
+| Basic Robot | 20 | 3 | 0.5 worker-day |
+| Advanced Robot | 35 | 5 | 1 worker-day |
+| Autonomous Robot Fleet | 60 | 8 | 3 worker-days |
 
-The current prototype supports two main modes:
+Workers can either support robots or provide manual transport capacity. The game calculates support load, remaining manual capacity, robot capacity, net daily capacity, total cost, strategy fit, and target value scores.
 
-- `Play Mode`
-  Use the platform as a player would. Choose a strategy, assign workers, compare variants, and run the task-flow simulation.
+## Rounds
 
-- `Setup Mode`
-  Edit the numbers behind the experience. Change strategy values, worker values, crew quantities, score weights, and the final reward formula.
+### Round 1: Cost-Driven Design
 
-Changes saved in `Setup Mode` immediately update `Play Mode`.
+Teams must pass:
 
-## Core Structure
+- Human Support Check
+- Capacity Check
+- Budget Visibility
 
-The wall assembly job is split into four tasks:
+The Round 1 winner is the lowest-cost feasible solution.
 
-1. `Collecting`
-2. `Moving`
-3. `Positioning`
-4. `Mounting`
+### Round 2: Target Value Design
 
-Players can assign:
+Teams maximize value while passing:
 
-- `Human Generalist`
-- `Skilled Installer`
-- single-task robots
-- two-task combined robots
-- three-task combined robots
-- one four-task robot
+- Budget <= 200
+- Capacity >= 20 units/day
+- Productivity >= 70
+- Operational Safety >= 70
+- Manual Physical Effort Reduction >= 70
+- Human Support Feasible
+- HRC Strategy Fit
 
-Robots can optionally receive `Generalist` support to improve safety.
-
-Multiple crew members can be assigned to the same task:
-
-- this mainly boosts `efficiency`
-- it can slightly affect other target values
-- it increases cost
+The Round 2 winner is the highest Value Score among eligible teams. Ties go to the lower-cost solution.
 
 ## Files
 
-- [index.html](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/index.html)
-  App structure and page layout
+- `index.html`: dashboard structure
+- `styles.css`: responsive simulation dashboard styling
+- `app.js`: shared formulas, local state, KPI rendering, and team comparison
+- `team.html`: local team setup page
 
-- [styles.css](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/styles.css)
-  Visual design, layout, simulation styling, and setup-mode styling
+## Run Locally
 
-- [app.js](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/app.js)
-  Data model, scoring logic, drag-and-drop behavior, setup editing, and simulation logic
-
-## How To Run
-
-This is a static web prototype. You can run it with any simple local server.
-
-Example:
+This is a static web prototype. Run any simple local server:
 
 ```bash
 python3 -m http.server 4173
@@ -81,195 +72,4 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
-## Open Online
-
-Once GitHub Pages finishes deploying, the prototype can be opened here:
-
-[https://qiming0303.github.io/HRC_game/](https://qiming0303.github.io/HRC_game/)
-
-If the page does not open yet, enable `GitHub Pages` in the repository settings:
-
-1. Open `Settings`
-2. Open `Pages`
-3. Set `Source` to `GitHub Actions`
-4. Wait for the deploy workflow to finish
-
-## How To Use Play Mode
-
-### 1. Choose A Strategy
-
-At the top of the page, pick one of the three strategies:
-
-- `Human-led`
-- `Collaborative`
-- `Robotic-led`
-
-Each strategy changes:
-
-- base cost
-- profile values
-- available crew quantities
-- expected human/robot balance
-
-### 2. Review The Worker Pool
-
-Under the strategy cards, the worker pool shows:
-
-- worker name
-- worker cost
-- three value bars
-- available quantity
-
-Worker quantities depend on the selected strategy.
-
-### 3. Assign Workers In Step 2
-
-Drag workers into the four task sockets.
-
-Important rules:
-
-- at least one robot should be part of the setup
-- multi-task robots span adjacent tasks automatically
-- if a task is covered only by humans, it must include a `Skilled Installer`
-- robot assignments can receive optional `Generalist` support for safety improvement
-
-### 4. Stack Multiple Crew
-
-You can assign more than one crew member to the same task.
-
-This is useful for testing tradeoffs such as:
-
-- higher throughput from additional labor
-- extra cost from larger crews
-- different safety behavior when tasks become crowded
-
-### 5. Review The Outcome Panel
-
-The floating panel on the right shows the predicted result:
-
-- efficiency
-- safety
-- reduced manual work
-- budget impact
-- strategy fit
-- final score
-
-### 6. Run The Simulation
-
-At the bottom of Step 2, click `Run Simulation`.
-
-The simulation shows square blocks moving through the task pipeline:
-
-- left side: incoming blocks
-- middle: four stations
-- right side: completed 3x3 block grid
-
-Simulation speed depends on station setup:
-
-- more efficient stations move blocks faster
-- more crew can speed up a station
-- if a later station is missing, blocks stop at the last staffed stage
-- if one station is faster than the next, downstream accumulation can happen
-
-### 7. Save Variants
-
-Use the variant section to store and compare different crew setups.
-
-## How To Use Setup Mode
-
-Switch to `Setup Mode` from the top bar.
-
-Setup Mode uses the same overall layout as Play Mode, but the numbers are editable.
-
-### Strategy Editing
-
-You can change:
-
-- base cost
-- profile values
-- fit targets
-
-### Worker Editing
-
-Each worker card can be edited for:
-
-- cost
-- efficiency value
-- safety value
-- manual-reduction value
-- quantity for the currently selected strategy
-
-### Formula Editing
-
-The floating panel in Setup Mode includes editable fields for:
-
-- score weights
-- final reward formula
-
-The formula is a JavaScript-style expression.
-
-Available variables include:
-
-- `performanceScore`
-- `strategyBonus`
-- `budgetPenalty`
-- `efficiency`
-- `safety`
-- `manualReduction`
-- `humanCount`
-- `robotCount`
-- `coveredTasks`
-- `totalCost`
-- `budgetLimit`
-
-Example:
-
-```js
-Math.max(0, Math.round(performanceScore + strategyBonus - budgetPenalty))
-```
-
-When you click `Save Setup`, the updated configuration is saved locally in the browser and immediately applied to Play Mode.
-
-## Data Persistence
-
-Setup changes are stored in browser local storage.
-
-That means:
-
-- configuration changes persist across refreshes in the same browser
-- configuration is local to that browser/device unless exported manually
-
-## Current Design Intent
-
-This prototype is intentionally positioned between:
-
-- a `serious game`
-- a `decision-support interface`
-- a `playtest sandbox`
-
-It is useful for:
-
-- discussing HRC strategy tradeoffs
-- testing whether rules feel understandable
-- exploring how crew availability changes decisions
-- presenting HRC setup ideas to collaborators
-
-## Limitations
-
-Current limitations include:
-
-- static front-end only, no backend or user accounts
-- simulation is simplified and not a physics-based model
-- setup persistence is browser-local only
-- no import/export workflow for configurations yet
-- no automated tests yet
-
-## Suggested Next Steps
-
-Likely useful next improvements:
-
-- export/import setup configurations as JSON
-- smoother animated simulation transitions
-- editable formulas for multi-crew efficiency and safety effects
-- clearer visual cues for support humans and multi-task robots
-- scenario presets for different budgets or wall assembly conditions
+The app has no backend and is compatible with GitHub Pages.
