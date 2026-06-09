@@ -16,6 +16,9 @@
         min-height: 100vh;
         display: grid;
         place-items: center;
+        margin: 0;
+        background: linear-gradient(180deg, #f7fbff 0%, #eaf4ff 100%);
+        color: var(--ink);
       }
 
       .team-setup-page {
@@ -26,6 +29,9 @@
 
       .team-setup-card {
         padding: 28px;
+        border: 1px solid rgba(31, 90, 204, 0.18);
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 20px 50px rgba(31, 90, 204, 0.08);
       }
 
       .decision-sheet-title {
@@ -47,9 +53,9 @@
 
       .team-setup-form input {
         width: 100%;
-        border: 1px solid rgba(16, 37, 66, 0.16);
+        border: 1px solid rgba(31, 90, 204, 0.22);
         border-radius: 8px;
-        background: #fff;
+        background: #f4f8ff;
         color: var(--ink);
         padding: 12px 14px;
         font: inherit;
@@ -66,6 +72,17 @@
         gap: 12px;
         flex-wrap: wrap;
         margin-top: 22px;
+      }
+
+      .team-setup-actions .button.primary {
+        background: var(--accent);
+        color: #fff;
+      }
+
+      .team-setup-actions .button.ghost {
+        background: rgba(233, 241, 255, 0.92);
+        color: var(--ink);
+        border: 1px solid rgba(31, 90, 204, 0.16);
       }
 
       .team-feedback,
@@ -140,6 +157,7 @@
           <div class="team-setup-actions">
             <button class="button primary" type="submit">Start Game</button>
             <button id="new-team" class="button ghost" type="button">New Blank Team</button>
+            <a class="button ghost" href="./index.html">Return to Game</a>
           </div>
         </form>
 
