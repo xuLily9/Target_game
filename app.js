@@ -1,38 +1,40 @@
 const STORAGE_KEY = "hrc-strategy-playtest-config-v1";
+const TEAM_STORAGE_KEY = "construction-site-team-v1";
+const BACKEND_URL = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"; // TODO: paste your Google Apps Script Web App URL here
 const budgetLimit = 80;
 const maxVariants = 3;
 const SIMULATION_TICK_MS = 140;
 
 const taskDefinitions = [
-  { id: "collecting", name: "Collecting", note: "Panels and hardware are gathered here." },
-  { id: "moving", name: "Moving", note: "Material gets transported across the site." },
-  { id: "positioning", name: "Positioning", note: "Pieces are aligned before mounting." },
-  { id: "mounting", name: "Mounting", note: "The wall gets fixed and finished here." },
+  { id: "collecting", name: "Material Sourcing", note: "Gather construction materials and prefabricated elements." },
+  { id: "moving", name: "Transporting", note: "Move components to the work zone efficiently and safely." },
+  { id: "positioning", name: "Aligning", note: "Align parts before fastening and inspection." },
+  { id: "mounting", name: "Securing", note: "Secure assemblies and finish structure connections." },
 ];
 
 const defaultConfig = {
   taskLabels: {
-    collecting: { name: "Collecting", note: "Panels and hardware are gathered here." },
-    moving: { name: "Moving", note: "Material gets transported across the site." },
-    positioning: { name: "Positioning", note: "Pieces are aligned before mounting." },
-    mounting: { name: "Mounting", note: "The wall gets fixed and finished here." },
+    collecting: { name: "Material Sourcing", note: "Gather construction materials and prefabricated elements." },
+    moving: { name: "Transporting", note: "Move components to the work zone efficiently and safely." },
+    positioning: { name: "Aligning", note: "Align parts before fastening and inspection." },
+    mounting: { name: "Securing", note: "Secure assemblies and finish structure connections." },
   },
   uiText: {
-    modePlay: "Play Mode",
+    modePlay: "Workshop Mode",
     modeSetup: "Setup Mode",
-    step1: "Step 1",
-    step2: "Step 2",
-    step3: "Step 3",
-    chooseStrategy: "Choose Strategy",
+    step1: "Round 1",
+    step2: "Round 2",
+    step3: "Summary",
+    chooseStrategy: "Choose Team",
     availableCrew: "Available Crew",
     coverEveryTask: "Cover Every Task",
     reviewOutcome: "Review Outcome",
     crewView: "Crew View",
-    variants: "Variants",
-    saveAndCompare: "Save and Compare Setups",
-    saveCurrentVariant: "Save Current Variant",
-    resetSetup: "Reset Setup",
-    runSimulation: "Run Simulation",
+    variants: "Team Assessments",
+    saveAndCompare: "Save and Compare Team Plans",
+    saveCurrentVariant: "Save Current Team",
+    resetSetup: "Reset Layout",
+    runSimulation: "Run Site Flow",
     resetFlow: "Reset Flow",
     incoming: "Incoming",
     completed: "Completed",
@@ -40,39 +42,50 @@ const defaultConfig = {
     noBlocks: "No blocks",
     dragCrewHere: "Drag crew here",
     crewAssigned: "crew assigned.",
-    station: "Station",
+    station: "Zone",
     socketsRule1: "Task sockets accept one crew unit",
-    socketsRule2: "Multi-task robots span adjacent sockets",
-    socketsRule3: "Human-only sockets require Skilled Installer",
+    socketsRule2: "Multi-task robots span adjacent zones",
+    socketsRule3: "Human-only coverage requires Skilled Foreman",
     weighting: "Weighting",
     formula: "Formula",
-    efficiency: "Efficiency",
+    efficiency: "Productivity",
     safety: "Safety",
-    manualReduction: "Manual",
+    manualReduction: "Effort Reduction",
     manualWorkReduced: "Manual Work Reduced",
     budget: "Budget",
-    strategy: "Strategy",
+    strategy: "Team",
     score: "Score",
-    predictedFinalScore: "Predicted Final Score",
-    weightedPerformance: "Weighted performance",
-    strategyFitBonus: "Strategy fit bonus",
-    budgetPenalty: "Budget penalty",
-    robotCount: "Robot Count",
+    predictedFinalScore: "Predicted Score",
+    weightedPerformance: "Weighted Performance",
+    strategyFitBonus: "Strategy Fit",
+    budgetPenalty: "Budget Penalty",
+    robotCount: "Robots",
     base: "Base",
     cost: "Cost",
     qty: "Qty",
     edit: "Edit",
-    fitHumans: "Fit Humans",
-    fitRobots: "Fit Robots",
-    finalRewardFormula: "Final Reward Formula",
+    fitHumans: "Human Share",
+    fitRobots: "Robot Share",
+    finalRewardFormula: "Scoring Formula",
     saveSetup: "Save Setup",
     resetConfig: "Reset Config",
-    generalistSupport: "Generalist support",
+    generalistSupport: "Crew Support",
     on: "On",
     off: "Off",
-    addGeneralist: "Add Generalist",
+    addGeneralist: "Add Support",
     removeSupport: "Remove Support",
     clear: "Clear",
+    setupPanelTitle: "Configure the construction scenario",
+    targetCapacity: "Capacity Target",
+    operationalSafety: "Operational Safety",
+    manualEffort: "Manual Effort",
+    oversight: "Human Oversight",
+    pass: "Pass",
+    fail: "Fail",
+    round1: "Round 1 Checks",
+    round2: "Round 2 Checks",
+    robotShare: "Robot Capacity Share",
+    budgetStatus: "Budget Status",
   },
   weights: {
     efficiency: 0.3,
@@ -84,7 +97,7 @@ const defaultConfig = {
   workerCatalog: {
     generalist_human: {
       id: "generalist_human",
-      name: "Generalist",
+      name: "Site Assistant",
       type: "Human",
       cost: 8,
       mode: "single",
@@ -96,7 +109,7 @@ const defaultConfig = {
     },
     skilled_human: {
       id: "skilled_human",
-      name: "Skilled Installer",
+      name: "Skilled Foreman",
       type: "Human",
       cost: 13,
       mode: "single",
@@ -108,7 +121,7 @@ const defaultConfig = {
     },
     robot_collect: {
       id: "robot_collect",
-      name: "Collect Bot",
+      name: "Material Handler",
       type: "Robot",
       cost: 12,
       mode: "single",
@@ -120,7 +133,7 @@ const defaultConfig = {
     },
     robot_move: {
       id: "robot_move",
-      name: "Transport Bot",
+      name: "Transport Drone",
       type: "Robot",
       cost: 14,
       mode: "single",
@@ -132,7 +145,7 @@ const defaultConfig = {
     },
     robot_position: {
       id: "robot_position",
-      name: "Positioning Bot",
+      name: "Alignment Drone",
       type: "Robot",
       cost: 18,
       mode: "single",
@@ -144,7 +157,7 @@ const defaultConfig = {
     },
     robot_mount: {
       id: "robot_mount",
-      name: "Mount Bot",
+      name: "Assembly Drone",
       type: "Robot",
       cost: 17,
       mode: "single",
@@ -229,11 +242,11 @@ const defaultConfig = {
   },
   strategies: [
     {
-      id: "human-led",
-      name: "Human-led",
+      id: "team-a",
+      name: "Team A: Human-Led",
       baseCost: 6,
-      profile: { efficiency: 60, safety: 85, manual: 34 },
-      narrative: "Smaller automation budget with human control and a few assistive robots.",
+      profile: { efficiency: 62, safety: 84, manual: 40 },
+      narrative: "Human-led site control with selective robotic assistance for low-risk tasks.",
       quantities: {
         generalist_human: "unlimited",
         skilled_human: "unlimited",
@@ -249,13 +262,15 @@ const defaultConfig = {
         robot_quad: 0,
       },
       fitTargets: { humans: 0.65, robots: 0.35 },
+      fitRange: { min: 0, max: 0.35 },
+      targets: { capacity: 4, productivity: 66, safety: 76, manual: 40 },
     },
     {
-      id: "collaborative",
-      name: "Collaborative",
+      id: "team-b",
+      name: "Team B: Collaborative",
       baseCost: 14,
-      profile: { efficiency: 76, safety: 84, manual: 67 },
-      narrative: "Shared handoffs with enough automation to reduce strain without losing flexibility.",
+      profile: { efficiency: 76, safety: 82, manual: 68 },
+      narrative: "Balanced human-robot collaboration with shared load handling and oversight.",
       quantities: {
         generalist_human: 2,
         skilled_human: 2,
@@ -271,13 +286,15 @@ const defaultConfig = {
         robot_quad: 1,
       },
       fitTargets: { humans: 0.45, robots: 0.55 },
+      fitRange: { min: 0.35, max: 0.75 },
+      targets: { capacity: 4, productivity: 74, safety: 80, manual: 56 },
     },
     {
-      id: "robotic-led",
-      name: "Robotic-led",
+      id: "team-c",
+      name: "Team C: Robot-Led",
       baseCost: 24,
-      profile: { efficiency: 88, safety: 76, manual: 88 },
-      narrative: "High automation coverage with multi-task robots doing most of the heavy lifting.",
+      profile: { efficiency: 88, safety: 76, manual: 86 },
+      narrative: "Robot-led workflow maximizing automation while keeping human oversight in key roles.",
       quantities: {
         generalist_human: 2,
         skilled_human: 0,
@@ -293,6 +310,8 @@ const defaultConfig = {
         robot_quad: "unlimited",
       },
       fitTargets: { humans: 0.15, robots: 0.85 },
+      fitRange: { min: 0.75, max: 1 },
+      targets: { capacity: 4, productivity: 82, safety: 74, manual: 80 },
     },
   ],
 };
@@ -301,13 +320,21 @@ const state = {
   mode: "play",
   config: loadConfig(),
   setupDraft: null,
-  selectedStrategyId: "collaborative",
+  selectedStrategyId: "team-b",
   placements: {},
   simulation: buildSimulationState(),
   simulationTimer: null,
   variants: [],
   selectedVariantId: null,
+  teamInfo: loadTeamInfo(),
+  backendResult: null,
+  submissionStatus: null,
+  isSubmitting: false,
 };
+
+function isTeamReady(teamInfo) {
+  return Boolean(teamInfo?.teamName && teamInfo?.architectureLead && teamInfo?.robotEngineer && teamInfo?.costManager);
+}
 
 const topbarStatsEl = document.getElementById("topbar-stats");
 const modeToggleEl = document.getElementById("mode-toggle");
@@ -325,7 +352,10 @@ const saveSetupButton = document.getElementById("save-setup");
 const resetSetupConfigButton = document.getElementById("reset-setup-config");
 const runSimulationButton = document.getElementById("run-simulation");
 const resetSimulationButton = document.getElementById("reset-simulation");
+const saveDraftButton = document.getElementById("save-draft");
+const submitFinalButton = document.getElementById("submit-final");
 const workspaceEl = document.querySelector(".workspace");
+const teamPanelEl = document.getElementById("team-panel");
 
 saveVariantButton.addEventListener("click", saveVariant);
 resetSetupButton.addEventListener("click", resetPlaySetup);
@@ -333,6 +363,12 @@ saveSetupButton.addEventListener("click", saveSetupConfig);
 resetSetupConfigButton.addEventListener("click", resetSetupConfig);
 runSimulationButton.addEventListener("click", startSimulation);
 resetSimulationButton.addEventListener("click", resetSimulation);
+saveDraftButton?.addEventListener("click", () => submitTeamData("Draft"));
+submitFinalButton?.addEventListener("click", () => submitTeamData("Final"));
+
+if (!isTeamReady(state.teamInfo) && !window.location.pathname.endsWith("team.html")) {
+  window.location.href = "./team.html";
+}
 
 resetPlaySetup();
 
@@ -344,6 +380,49 @@ function loadConfig() {
   } catch {
     return structuredClone(defaultConfig);
   }
+}
+
+function loadTeamInfo() {
+  try {
+    const raw = localStorage.getItem(TEAM_STORAGE_KEY);
+    if (!raw) return buildEmptyTeamInfo();
+    return { ...buildEmptyTeamInfo(), ...JSON.parse(raw) };
+  } catch {
+    return buildEmptyTeamInfo();
+  }
+}
+
+function buildEmptyTeamInfo() {
+  return {
+    sessionId: "",
+    teamName: "",
+    architectureLead: "",
+    robotEngineer: "",
+    costManager: "",
+    participants: "",
+    teamId: "",
+    finalSubmitted: false,
+  };
+}
+
+function saveTeamInfo(teamInfo) {
+  state.teamInfo = { ...state.teamInfo, ...teamInfo };
+  localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(state.teamInfo));
+}
+
+function generateTeamId() {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `team-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+}
+
+function normalizeParticipants(value) {
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .join(", ");
 }
 
 function mergeConfig(base, saved) {
@@ -435,9 +514,10 @@ function resetPlaySetup() {
 function render() {
   renderModeToggle();
   renderStaticText();
+  renderTeamPanel();
   const strategy = getSelectedStrategy();
   const metrics = evaluateSetup(strategy, state.placements);
-  renderTopbar(strategy, metrics);
+  renderTopbar(strategy);
   renderModeVisibility();
   if (state.mode === "setup") {
     if (!state.setupDraft) state.setupDraft = structuredClone(state.config);
@@ -454,7 +534,7 @@ function render() {
 
 function renderStaticText() {
   const mappings = {
-    "setup-panel-title": "finalRewardFormula",
+    "setup-panel-title": "setupPanelTitle",
     "step1-kicker": "step1",
     "step1-title": "chooseStrategy",
     "crew-kicker": "crewView",
@@ -496,8 +576,149 @@ function renderModeToggle() {
 }
 
 function renderModeVisibility() {
-  setupPanelEl.classList.add("hidden");
-  workspaceEl.classList.remove("hidden");
+  if (state.mode === "setup") {
+    setupPanelEl.classList.remove("hidden");
+    workspaceEl.classList.add("hidden");
+  } else {
+    setupPanelEl.classList.add("hidden");
+    workspaceEl.classList.remove("hidden");
+  }
+}
+
+function getSubmissionCounts() {
+  const workerCatalog = getWorkerCatalog();
+  const assignmentMap = new Map();
+  taskDefinitions.forEach((task) => {
+    state.placements[task.id].forEach((placement) => {
+      if (!assignmentMap.has(placement.assignmentId)) assignmentMap.set(placement.assignmentId, placement.workerId);
+    });
+  });
+  const counts = { workers: 0, basicRobots: 0, advancedRobots: 0, multiRobotSystems: 0 };
+  assignmentMap.forEach((workerId) => {
+    const worker = workerCatalog[workerId];
+    if (!worker) return;
+    if (worker.type === "Human") {
+      counts.workers += 1;
+      return;
+    }
+    const coverage = getWorkerPreviewTasks(worker).length;
+    if (coverage === 1) counts.basicRobots += 1;
+    else if (coverage === 2) counts.advancedRobots += 1;
+    else if (coverage >= 3) counts.multiRobotSystems += 1;
+  });
+  return counts;
+}
+
+function renderTeamPanel() {
+  if (!teamPanelEl) return;
+  const sessionInput = document.getElementById("team-session-id");
+  const teamNameInput = document.getElementById("team-name");
+  const participantsInput = document.getElementById("team-participants");
+  const teamIdInput = document.getElementById("team-id");
+  const feedbackEl = document.getElementById("team-feedback");
+
+  if (sessionInput) sessionInput.value = state.teamInfo.sessionId || "";
+  if (teamNameInput) teamNameInput.value = state.teamInfo.teamName || "";
+  if (participantsInput) participantsInput.value = state.teamInfo.participants || "";
+  if (teamIdInput) teamIdInput.value = state.teamInfo.teamId || "";
+
+  const counts = getSubmissionCounts();
+  const summaryText = `Plan summary: ${counts.workers} human worker${counts.workers === 1 ? "" : "s"}, ${counts.basicRobots} basic robot${counts.basicRobots === 1 ? "" : "s"}, ${counts.advancedRobots} advanced robot${counts.advancedRobots === 1 ? "" : "s"}, ${counts.multiRobotSystems} multi-robot system${counts.multiRobotSystems === 1 ? "" : "s"}.`;
+  let statusText = "Save a draft or submit final decision to get official results from the backend.";
+  if (state.submissionStatus) {
+    statusText = `${state.submissionStatus.type} response: ${state.submissionStatus.message}`;
+    if (state.submissionStatus.time) statusText += ` (${state.submissionStatus.time})`;
+  }
+  if (state.teamInfo.finalSubmitted) statusText = "Final decision has been submitted. You can still save additional drafts if needed.";
+  if (feedbackEl) {
+    feedbackEl.innerHTML = `
+      <div class="team-summary">${summaryText}</div>
+      <div class="team-status-message">${statusText}</div>
+    `;
+  }
+
+  const draftButton = document.getElementById("save-draft");
+  const finalButton = document.getElementById("submit-final");
+  if (draftButton) draftButton.disabled = state.isSubmitting;
+  if (finalButton) finalButton.disabled = state.isSubmitting || !state.teamInfo.sessionId || !state.teamInfo.teamName || !state.teamInfo.participants || state.teamInfo.finalSubmitted;
+}
+
+function collectTeamInfoFromForm() {
+  const sessionInput = document.getElementById("team-session-id");
+  const teamNameInput = document.getElementById("team-name");
+  const participantsInput = document.getElementById("team-participants");
+
+  return {
+    sessionId: sessionInput?.value.trim() || "",
+    teamName: teamNameInput?.value.trim() || "",
+    participants: normalizeParticipants(participantsInput?.value || ""),
+    teamId: state.teamInfo.teamId || generateTeamId(),
+    finalSubmitted: state.teamInfo.finalSubmitted || false,
+  };
+}
+
+function validateTeamInfo() {
+  const info = collectTeamInfoFromForm();
+  if (!info.sessionId) throw new Error("Session ID is required.");
+  if (!info.teamName) throw new Error("Team name is required.");
+  if (!info.participants) throw new Error("Participant names are required.");
+  return info;
+}
+
+function getSubmissionPayload(submissionType) {
+  const teamInfo = validateTeamInfo();
+  const strategy = getSelectedStrategy();
+  const counts = getSubmissionCounts();
+  return {
+    sessionId: teamInfo.sessionId,
+    teamId: teamInfo.teamId,
+    teamName: teamInfo.teamName,
+    participants: teamInfo.participants,
+    strategy: strategy.name,
+    workers: counts.workers,
+    basicRobots: counts.basicRobots,
+    advancedRobots: counts.advancedRobots,
+    multiRobotSystems: counts.multiRobotSystems,
+    submissionType,
+  };
+}
+
+async function submitTeamData(submissionType) {
+  try {
+    state.isSubmitting = true;
+    renderTeamPanel();
+    const teamInfo = validateTeamInfo();
+    saveTeamInfo(teamInfo);
+    const payload = getSubmissionPayload(submissionType);
+
+    if (!BACKEND_URL || BACKEND_URL.includes("PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE")) {
+      throw new Error("Backend URL is not configured. Please paste your Google Apps Script Web App URL into app.js.");
+    }
+
+    const response = await fetch(BACKEND_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Backend request failed with status ${response.status}`);
+    }
+
+    const result = await response.json();
+    if (!result.ok) {
+      throw new Error(result.message || "Backend rejected the submission.");
+    }
+
+    saveTeamInfo({ teamId: result.teamId || teamInfo.teamId, finalSubmitted: submissionType === "Final" });
+    state.backendResult = result;
+    state.submissionStatus = { type: submissionType, message: result.message || "Saved", time: result.savedAt || new Date().toISOString() };
+  } catch (error) {
+    state.submissionStatus = { type: "Error", message: error.message || "Unable to save draft.", time: new Date().toISOString() };
+  } finally {
+    state.isSubmitting = false;
+    render();
+  }
 }
 
 function renderSetupWorkspace() {
@@ -510,13 +731,15 @@ function renderSetupWorkspace() {
   simulationBoardEl.innerHTML = "";
 }
 
-function renderTopbar(strategy, metrics) {
+function renderTopbar(strategy) {
   topbarStatsEl.innerHTML = "";
-  [
-    { label: t("budget"), value: `${metrics.totalCost} / ${budgetLimit}` },
-    { label: t("strategy"), value: strategy.name },
-    { label: t("score"), value: `${metrics.finalScore}` },
-  ].forEach((item) => {
+  const values = [
+    { label: "Team", value: state.teamInfo.teamName || "Not set" },
+    { label: "Architecture Lead", value: state.teamInfo.architectureLead || "Not set" },
+    { label: "Robot Engineer", value: state.teamInfo.robotEngineer || "Not set" },
+    { label: "Cost Manager", value: state.teamInfo.costManager || "Not set" },
+  ];
+  values.forEach((item) => {
     const card = document.createElement("div");
     card.className = "stat-card";
     card.innerHTML = `<div class="metric-label">${item.label}</div><span class="stat-value">${item.value}</span>`;
@@ -1097,7 +1320,7 @@ function renderTaskBoard(metrics) {
             `
             : `<div class="drop-copy">${dropHint}<br /><span class="microcopy">${taskMeta.name.toUpperCase()}</span></div>`
         }
-        <div class="socket-tooltip">Robot coverage preferred; human-only coverage requires Skilled Installer.</div>
+        <div class="socket-tooltip">Robot coverage preferred; human-only coverage requires Skilled Foreman.</div>
       </div>
       <div class="microcopy">Extra crew boosts efficiency most, with weaker effects on safety and manual work.</div>
       ${warnings.length ? `<div class="warning-list">${warnings.map((warning) => `<div class="warning-pill">${warning}</div>`).join("")}</div>` : ""}
@@ -1185,28 +1408,43 @@ function renderSimulationBoard(metrics) {
 }
 
 function renderOutcomePanel(strategy, metrics) {
-  const weights = state.config.weights;
-  const warningMarkup = metrics.warnings.length
-    ? metrics.warnings.map((warning) => `<div class="warning-pill">${warning}</div>`).join("")
-    : `<div class="role-pill">This setup is playable. Every socket is covered.</div>`;
+  const result = state.backendResult;
+  if (!result) {
+    outcomePanelEl.innerHTML = `
+      <div class="score-card">
+        <div class="panel-kicker">Official Results</div>
+        <div class="stat-value">Awaiting backend submission</div>
+        <div class="score-line"><span>Please save or submit your team plan to retrieve results.</span></div>
+      </div>
+      <div class="team-summary">Selected strategy: ${strategy.name}</div>
+      <div class="team-summary">Submit your plan to see official results from the Google Sheet backend.</div>
+    `;
+    return;
+  }
 
+  const row = result.resultData || {};
   outcomePanelEl.innerHTML = `
     <div class="score-card">
-      <div class="panel-kicker">${t("predictedFinalScore")}</div>
-      <div class="stat-value">${metrics.finalScore}</div>
-      <div class="score-line"><span>${t("weightedPerformance")}</span><strong>${metrics.performanceScore}</strong></div>
-      <div class="score-line"><span>${t("strategyFitBonus")}</span><strong>${metrics.strategyBonus >= 0 ? "+" : ""}${metrics.strategyBonus}</strong></div>
-      <div class="score-line"><span>${t("budgetPenalty")}</span><strong>-${metrics.budgetPenalty}</strong></div>
+      <div class="panel-kicker">Official Team Results</div>
+      <div class="stat-line"><strong>${result.message}</strong></div>
+      <div class="score-line"><span>Saved at</span><strong>${result.savedAt || "n/a"}</strong></div>
     </div>
     <div class="stat-grid">
-      <div class="stat-card"><div class="metric-label">${t("efficiency")}</div><span class="stat-value">${metrics.efficiency}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("safety")}</div><span class="stat-value">${metrics.safety}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("manualWorkReduced")}</div><span class="stat-value">${metrics.manualReduction}</span></div>
-      <div class="stat-card"><div class="metric-label">${t("robotCount")}</div><span class="stat-value">${metrics.robotCount}</span></div>
+      <div class="stat-card"><div class="metric-label">Strategy</div><span class="stat-value">${row.strategy || strategy.name}</span></div>
+      <div class="stat-card"><div class="metric-label">Workers</div><span class="stat-value">${row.workers ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Basic Robots</div><span class="stat-value">${row.basicRobots ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Advanced Robots</div><span class="stat-value">${row.advancedRobots ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Multi-Robot Systems</div><span class="stat-value">${row.multiRobotSystems ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Capacity</div><span class="stat-value">${row.capacity ?? "-"}</span></div>
     </div>
-    <div class="metric-pill">${t("weighting")}: ${weights.efficiency} ${t("efficiency")} + ${weights.safety} ${t("safety")} + ${weights.manualReduction} ${t("manualReduction")}</div>
-    <div class="metric-pill">${t("formula")}: ${state.config.rewardFormula}</div>
-    <div class="warning-list" style="margin-top: 14px">${warningMarkup}</div>
+    <div class="stat-grid">
+      <div class="stat-card"><div class="metric-label">Robot Share</div><span class="stat-value">${row.robotCapacityShare ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Strategy Fit</div><span class="stat-value">${row.hrcStrategyFit ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Productivity</div><span class="stat-value">${row.productivity ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Safety</div><span class="stat-value">${row.operationalSafety ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Effort Reduction</div><span class="stat-value">${row.manualPhysicalEffortReduction ?? "-"}</span></div>
+      <div class="stat-card"><div class="metric-label">Status</div><span class="stat-value">${row.finalStatus ?? "-"}</span></div>
+    </div>
   `;
 }
 
@@ -1326,7 +1564,7 @@ function saveVariant() {
   state.variants = [
     {
       id: crypto.randomUUID(),
-      name: `Variant ${state.variants.length + 1}`,
+      name: strategy.name,
       strategyId: strategy.id,
       strategyName: strategy.name,
       placements: structuredClone(state.placements),
@@ -1403,7 +1641,7 @@ function evaluateSetup(strategy, placements) {
     const humanOnly = taskPlacements.every((placement) => workerCatalog[placement.workerId].type === "Human");
     const hasSkilledInstaller = taskPlacements.some((placement) => workerCatalog[placement.workerId].canSoloTask);
     if (humanOnly && !hasSkilledInstaller) {
-      taskWarnings[task.id].push("Human-only coverage must use a skilled installer.");
+      taskWarnings[task.id].push("Human-only coverage must use a skilled foreman.");
     }
     if (assignmentCount > 1) {
       taskWarnings[task.id].push("Multi-crew assignment raises efficiency, but costs more and slightly reduces safety.");
@@ -1424,11 +1662,14 @@ function evaluateSetup(strategy, placements) {
   const efficiency = coveredTasks ? Math.round(efficiencySum / taskDefinitions.length) : 0;
   const safety = coveredTasks ? Math.round(safetySum / taskDefinitions.length) : 0;
   const manualReduction = coveredTasks ? Math.round(manualReductionSum / taskDefinitions.length) : 0;
+  const totalAssignments = uniqueAssignments.size;
+  const totalWorkers = humanCount + robotCount;
+  const robotShare = totalWorkers ? robotCount / totalWorkers : 0;
   const weights = state.config.weights;
   const performanceScore = roundOneDecimal(
     weights.efficiency * efficiency + weights.safety * safety + weights.manualReduction * manualReduction
   );
-  const strategyBonus = calculateStrategyBonus(strategy.fitTargets, humanCount, robotCount);
+  const strategyBonus = calculateStrategyBonus(strategy, robotShare);
   const totalCost = strategy.baseCost + totalWorkerCost;
   const budgetPenalty = totalCost > budgetLimit ? (totalCost - budgetLimit) * 1.8 : 0;
   const finalScore = computeReward({
@@ -1445,12 +1686,72 @@ function evaluateSetup(strategy, placements) {
     budgetLimit,
   });
 
+  const round1Checks = [
+    {
+      id: "humanSupport",
+      label: "Human support feasible",
+      pass: robotCount === 0 || getSupportGeneralistCount(placements) > 0,
+      detail: robotCount === 0 ? "No robots assigned; support not required." : getSupportGeneralistCount(placements) > 0 ? "Human oversight assigned to robot tasks." : "Add human oversight to robot tasks.",
+    },
+    {
+      id: "capacityFeasible",
+      label: "Capacity feasible",
+      pass: coveredTasks === taskDefinitions.length,
+      detail: coveredTasks === taskDefinitions.length ? "Every construction zone is covered." : `${taskDefinitions.length - coveredTasks} zone(s) still uncovered.`,
+    },
+    {
+      id: "budgetVisible",
+      label: "Budget visibility",
+      pass: true,
+      detail: `Total cost is ${totalCost}/${budgetLimit}.`,
+    },
+  ];
+
+  const round2Checks = [
+    {
+      id: "capacityTarget",
+      label: "Capacity >= target",
+      pass: totalAssignments >= strategy.targets.capacity,
+      detail: `Assignments ${totalAssignments}/${strategy.targets.capacity}`,
+    },
+    {
+      id: "productivityTarget",
+      label: "Productivity target",
+      pass: efficiency >= strategy.targets.productivity,
+      detail: `Productivity ${efficiency}/${strategy.targets.productivity}`,
+    },
+    {
+      id: "safetyTarget",
+      label: "Operational safety target",
+      pass: safety >= strategy.targets.safety,
+      detail: `Safety ${safety}/${strategy.targets.safety}`,
+    },
+    {
+      id: "manualTarget",
+      label: "Manual effort reduction target",
+      pass: manualReduction >= strategy.targets.manual,
+      detail: `Effort reduction ${manualReduction}/${strategy.targets.manual}`,
+    },
+    {
+      id: "budgetCheck",
+      label: "Budget check",
+      pass: totalCost <= budgetLimit,
+      detail: totalCost <= budgetLimit ? "Within budget." : `Over budget by ${totalCost - budgetLimit}.`,
+    },
+    {
+      id: "strategyFit",
+      label: "HRC strategy fit",
+      pass: robotShare >= strategy.fitRange.min && robotShare <= strategy.fitRange.max,
+      detail: `Robot share ${Math.round(robotShare * 100)}% (${Math.round(strategy.fitRange.min * 100)}%–${Math.round(strategy.fitRange.max * 100)}% target).`,
+    },
+  ];
+
   taskDefinitions.forEach((task) => {
     taskWarnings[task.id].forEach((warning) => warnings.push(`${labelizeTask(task.id)}: ${warning}`));
   });
   if (!robotCount) warnings.push("At least one robot must be part of the setup.");
   if (totalCost > budgetLimit) warnings.push(`Over budget by ${totalCost - budgetLimit}. Final score is penalized, but the setup can still play.`);
-  if (coveredTasks === taskDefinitions.length && robotCount && !warnings.length) warnings.push("All four sockets are covered. You can start the mission.");
+  if (coveredTasks === taskDefinitions.length && robotCount && !warnings.length) warnings.push("All construction zones are covered. You can start the site plan.");
 
   return {
     totalCost,
@@ -1464,6 +1765,10 @@ function evaluateSetup(strategy, placements) {
     humanCount,
     robotCount,
     coveredTasks,
+    totalAssignments,
+    robotShare,
+    round1Checks,
+    round2Checks,
     warnings,
     taskWarnings,
     taskDynamics,
@@ -1480,13 +1785,12 @@ function computeReward(context) {
   }
 }
 
-function calculateStrategyBonus(fitTargets, humanCount, robotCount) {
-  const total = humanCount + robotCount;
-  if (!total) return 0;
-  const humanRatio = humanCount / total;
-  const robotRatio = robotCount / total;
-  const ratioGap = Math.abs(fitTargets.humans - humanRatio) + Math.abs(fitTargets.robots - robotRatio);
-  return Math.round(12 - ratioGap * 20);
+function calculateStrategyBonus(strategy, robotShare) {
+  const { min, max } = strategy.fitRange;
+  if (robotShare >= min && robotShare <= max) return 12;
+  const gap = Math.min(Math.abs(robotShare - min), Math.abs(robotShare - max));
+  if (gap <= 0.1) return 4;
+  return -6;
 }
 
 function summarizeRoster(quantities) {

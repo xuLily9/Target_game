@@ -111,6 +111,81 @@ body {
   margin-bottom: 20px;
 }
 
+.team-panel {
+  margin-bottom: 20px;
+}
+
+.team-form {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.team-form label,
+.team-form textarea,
+.team-form input {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+  font: inherit;
+}
+
+.team-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 14px;
+}
+
+.team-feedback {
+  margin-top: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(106, 143, 138, 0.08);
+  color: var(--ink);
+}
+
+.team-summary {
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.team-status-message {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.button.secondary {
+  background: #ede2cf;
+  color: var(--ink);
+  border: 1px solid rgba(33, 34, 30, 0.12);
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.admin-table th,
+.admin-table td {
+  border: 1px solid rgba(33, 34, 30, 0.12);
+  padding: 10px;
+  text-align: left;
+  font-size: 0.9rem;
+}
+
+.admin-table th {
+  background: rgba(184, 106, 46, 0.1);
+}
+
+.admin-summary {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 10px;
+  background: rgba(240, 229, 201, 0.9);
+}
+
 .setup-editor,
 .setup-worker-list,
 .setup-strategy-list {
@@ -863,6 +938,37 @@ button {
   gap: 16px;
   margin-top: 10px;
   font-family: "IBM Plex Mono", monospace;
+}
+
+.panel-subhead {
+  font-weight: 700;
+  margin-bottom: 8px;
+  color: var(--ink);
+}
+
+.check-section {
+  display: grid;
+  gap: 10px;
+}
+
+.check-row {
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(33, 34, 30, 0.1);
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.check-row.pass {
+  border-color: rgba(106, 143, 138, 0.4);
+}
+
+.check-row.fail {
+  border-color: rgba(164, 70, 45, 0.4);
+}
+
+.check-row strong {
+  display: block;
+  margin-top: 6px;
 }
 
 .warning-list {

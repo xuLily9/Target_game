@@ -1,73 +1,37 @@
-# HRC Strategy Game Prototype
+# Construction Site of the Future
 
-This repository contains a browser-based prototype for exploring `Human-Robot Collaboration (HRC)` strategies for a wall assembly job.
+This repository contains a browser-based GitHub Pages prototype for the Construction Site of the Future game.
 
-Live demo:
-[Open The Web Prototype](https://qiming0303.github.io/HRC_game/)
+The current build includes a team creation workflow, frontend submission UI, and an admin view for published Google Sheet results.
 
-The tool lets players:
+## What Changed
 
-- choose a high-level strategy
-- configure available humans and robots
-- assign crews to four assembly tasks
-- compare tradeoffs between `efficiency`, `safety`, and `reduced manual work`
-- experiment with budget pressure
-- watch a simple block-flow simulation of the assembly pipeline
-
-It is designed as a lightweight decision-support and playtest platform rather than a full production simulator.
-
-## What The Prototype Does
-
-The current prototype supports two main modes:
-
-- `Play Mode`
-  Use the platform as a player would. Choose a strategy, assign workers, compare variants, and run the task-flow simulation.
-
-- `Setup Mode`
-  Edit the numbers behind the experience. Change strategy values, worker values, crew quantities, score weights, and the final reward formula.
-
-Changes saved in `Setup Mode` immediately update `Play Mode`.
-
-## Core Structure
-
-The wall assembly job is split into four tasks:
-
-1. `Collecting`
-2. `Moving`
-3. `Positioning`
-4. `Mounting`
-
-Players can assign:
-
-- `Human Generalist`
-- `Skilled Installer`
-- single-task robots
-- two-task combined robots
-- three-task combined robots
-- one four-task robot
-
-Robots can optionally receive `Generalist` support to improve safety.
-
-Multiple crew members can be assigned to the same task:
-
-- this mainly boosts `efficiency`
-- it can slightly affect other target values
-- it increases cost
+- Added a **Create / Join Team** section with Session ID, Team Name, Participants, and auto-generated Team ID.
+- Added **Save Draft** and **Submit Final Decision** buttons.
+- Added a Google Apps Script backend file: `apps-script-backend.gs`.
+- Added an admin page: `admin.html` to display results from a published Google Sheet CSV.
+- Updated the UI and summary logic to rely on backend submissions rather than local final score calculations.
 
 ## Files
 
-- [index.html](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/index.html)
-  App structure and page layout
+- `index.html`
+  Main game page with team creation, strategy selection, crew assignment, and backend submission hooks.
 
-- [styles.css](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/styles.css)
-  Visual design, layout, simulation styling, and setup-mode styling
+- `styles.css`
+  Visual styling for the game, team panel, and admin table.
 
-- [app.js](/Users/qimsun/Documents/Workshop_HRC_Strategy_Game_Playtest/app.js)
-  Data model, scoring logic, drag-and-drop behavior, setup editing, and simulation logic
+- `app.js`
+  Frontend state, team storage, backend submission flow, and game interface rendering.
 
-## How To Run
+- `admin.html`
+  Admin dashboard that fetches a published Google Sheet CSV and renders submitted results.
 
-This is a static web prototype. You can run it with any simple local server.
+- `apps-script-backend.gs`
+  Google Apps Script backend for accepting POST submissions and appending them to `Submissions` and `Team Results` sheets.
+
+## How To Run Locally
+
+This is a static site and can be served from any local web server.
 
 Example:
 
@@ -81,123 +45,77 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
-## Open Online
+## Backend Setup
 
-Once GitHub Pages finishes deploying, the prototype can be opened here:
+1. Open the Google Sheets file and create a new Apps Script project.
+2. Paste the contents of `apps-script-backend.gs` into the script editor.
+3. Deploy the script as a Web App with access allowed for anyone, even anonymous.
+4. Copy the Web App URL.
+5. Paste the URL into `app.js` at the top in `BACKEND_URL`.
 
-[https://qiming0303.github.io/HRC_game/](https://qiming0303.github.io/HRC_game/)
+## Google Sheet Setup
 
-If the page does not open yet, enable `GitHub Pages` in the repository settings:
+The Apps Script backend will create the following sheets automatically if they do not exist:
 
-1. Open `Settings`
-2. Open `Pages`
-3. Set `Source` to `GitHub Actions`
-4. Wait for the deploy workflow to finish
+- `Submissions`
+- `Team Results`
 
-## How To Use Play Mode
+### Submissions columns
 
-### 1. Choose A Strategy
+- Timestamp
+- Session ID
+- Team ID
+- Team Name
+- Participants
+- Strategy
+- Workers
+- Basic Robots
+- Advanced Robots
+- Multi-Robot Systems
+- Submission Type
 
-At the top of the page, pick one of the three strategies:
+### Team Results columns
 
-- `Human-led`
-- `Collaborative`
-- `Robotic-led`
+- Timestamp
+- Session ID
+- Team ID
+- Team Name
+- Strategy
+- Workers
+- Basic Robots
+- Advanced Robots
+- Multi-Robot Systems
+- Total Cost
+- Capacity
+- Robot Capacity Share
+- HRC Strategy Fit
+- Productivity
+- Operational Safety
+- Manual Physical Effort Reduction
+- Round 1 Eligible
+- Round 2 Eligible
+- Final Status
 
-Each strategy changes:
+## Admin Page Setup
 
-- base cost
-- profile values
-- available crew quantities
-- expected human/robot balance
+1. Publish your `Team Results` sheet as a CSV.
+2. Paste the published CSV link into `admin.html` at `SHEET_CSV_URL`.
+3. Open `admin.html` in the browser.
 
-### 2. Review The Worker Pool
+## How To Use The Game
 
-Under the strategy cards, the worker pool shows:
+1. Enter `Session ID`, `Team Name`, and `Participants`.
+2. Save Draft to keep the team info locally and submit a draft to the backend.
+3. Choose a strategy and assign crew in the game interface.
+4. Submit Final Decision when your team plan is ready.
+5. Review the admin page to see submitted data once the sheet is published.
 
-- worker name
-- worker cost
-- three value bars
-- available quantity
+## Notes
 
-Worker quantities depend on the selected strategy.
+- The frontend no longer treats local score calculation as the official final result.
+- Official results are intended to be returned from the backend and stored in Google Sheets.
+- The backend currently writes raw inputs and placeholder result columns so sheet formulas can compute the official metrics.
 
-### 3. Assign Workers In Step 2
-
-Drag workers into the four task sockets.
-
-Important rules:
-
-- at least one robot should be part of the setup
-- multi-task robots span adjacent tasks automatically
-- if a task is covered only by humans, it must include a `Skilled Installer`
-- robot assignments can receive optional `Generalist` support for safety improvement
-
-### 4. Stack Multiple Crew
-
-You can assign more than one crew member to the same task.
-
-This is useful for testing tradeoffs such as:
-
-- higher throughput from additional labor
-- extra cost from larger crews
-- different safety behavior when tasks become crowded
-
-### 5. Review The Outcome Panel
-
-The floating panel on the right shows the predicted result:
-
-- efficiency
-- safety
-- reduced manual work
-- budget impact
-- strategy fit
-- final score
-
-### 6. Run The Simulation
-
-At the bottom of Step 2, click `Run Simulation`.
-
-The simulation shows square blocks moving through the task pipeline:
-
-- left side: incoming blocks
-- middle: four stations
-- right side: completed 3x3 block grid
-
-Simulation speed depends on station setup:
-
-- more efficient stations move blocks faster
-- more crew can speed up a station
-- if a later station is missing, blocks stop at the last staffed stage
-- if one station is faster than the next, downstream accumulation can happen
-
-### 7. Save Variants
-
-Use the variant section to store and compare different crew setups.
-
-## How To Use Setup Mode
-
-Switch to `Setup Mode` from the top bar.
-
-Setup Mode uses the same overall layout as Play Mode, but the numbers are editable.
-
-### Strategy Editing
-
-You can change:
-
-- base cost
-- profile values
-- fit targets
-
-### Worker Editing
-
-Each worker card can be edited for:
-
-- cost
-- efficiency value
-- safety value
-- manual-reduction value
-- quantity for the currently selected strategy
 
 ### Formula Editing
 
