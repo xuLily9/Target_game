@@ -14,18 +14,111 @@
   </head>
   <body>
     <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">Construction Site of the Future</p>
-          <h1>Human-Robot Material Logistics Target Value Design Game</h1>
-        </div>
-        <div class="topbar-actions">
-          <a class="button ghost" href="./team.html">Team Setup</a>
-          <button class="button ghost" id="reset-all" type="button">Reset Plans</button>
+      <header class="scenario-hero">
+        <div class="scenario-visual" aria-label="High-rise construction logistics scenario">
+          <img src="./assets/scenario-site.png" alt="High-rise office construction site with humans, robots, storage materials, and work zones" />
+          <div class="scenario-shade"></div>
+
+          <div class="scenario-title">
+            <div class="hardhat-mark" aria-hidden="true"></div>
+            <div>
+              <p class="scenario-kicker">Smart Delivery Mission: High-Rise Office Project</p>
+              <h1>Scenario Update</h1>
+            </div>
+          </div>
+
+          <aside class="mission-brief" aria-label="Mission brief">
+            <div class="brief-point">
+              <span class="brief-icon">01</span>
+              <p>Your team has been hired to plan material delivery operations for a new high-rise office building.</p>
+            </div>
+            <div class="brief-point">
+              <span class="brief-icon">02</span>
+              <p>Construction materials must move from a temporary storage area to multiple work zones.</p>
+            </div>
+            <div class="brief-point">
+              <span class="brief-icon">03</span>
+              <p>The client wants the work completed quickly, safely, and within budget.</p>
+            </div>
+            <div class="brief-point">
+              <span class="brief-icon">04</span>
+              <p>Your plan can combine human workers, forklifts, delivery robots, and quadruped robots.</p>
+            </div>
+          </aside>
+
+          <div class="map-label storage-label">Storage Area</div>
+          <div class="map-label zone-a-label">Work Zone A <span>Ground Floor</span></div>
+          <div class="map-label zone-b-label">Work Zone B <span>Mid Floors</span></div>
+          <div class="map-label zone-c-label">Work Zone C <span>Upper Floors</span></div>
+
+          <aside class="project-info" aria-label="Key project information">
+            <h2>Key Project Info</h2>
+            <div class="info-row">
+              <span class="info-symbol calendar-symbol" aria-hidden="true"></span>
+              <div><span>Project Duration</span><strong>5 Days</strong></div>
+            </div>
+            <div class="info-row">
+              <span class="info-symbol box-symbol" aria-hidden="true"></span>
+              <div><span>Material Demand</span><strong>100 Units</strong></div>
+            </div>
+            <div class="info-row">
+              <span class="info-symbol gauge-symbol" aria-hidden="true"></span>
+              <div><span>Required Capacity</span><strong>20 Units / Day</strong></div>
+            </div>
+            <div class="info-row">
+              <span class="info-symbol credit-symbol" aria-hidden="true"></span>
+              <div><span>Budget Limit</span><strong>200 Credits</strong></div>
+            </div>
+          </aside>
+
+          <aside class="material-info" aria-label="Material examples">
+            <h2>Material Examples</h2>
+            <div class="material-row"><span class="material-beams"></span><strong>Steel Beams</strong></div>
+            <div class="material-row"><span class="material-blocks"></span><strong>Concrete Blocks</strong></div>
+            <div class="material-row"><span class="material-pipes"></span><strong>Pipes</strong></div>
+            <div class="material-row"><span class="material-bags"></span><strong>Cement Bags</strong></div>
+            <div class="material-row"><span class="material-glass"></span><strong>Glass Panels</strong></div>
+          </aside>
+
+          <div class="objective-ribbon">
+            <div class="objective-copy">
+              <strong>Your Objective</strong>
+              <p>Design the best plan to deliver 100 units of materials to all work zones within 5 days, meeting capacity and budget limits.</p>
+            </div>
+            <div class="resource-preview" aria-label="Resource examples">
+              <article>
+                <span class="worker-figure" aria-hidden="true"></span>
+                <div><strong>Human Worker</strong><p>Flexible, lower cost, requires rest</p></div>
+              </article>
+              <article>
+                <span class="forklift-figure" aria-hidden="true"></span>
+                <div><strong>Forklift</strong><p>High capacity, best for heavy loads</p></div>
+              </article>
+              <article>
+                <span class="cart-figure" aria-hidden="true"></span>
+                <div><strong>Delivery Robot</strong><p>Autonomous operation, medium capacity</p></div>
+              </article>
+              <article>
+                <span class="quad-figure" aria-hidden="true"></span>
+                <div><strong>Quadruped Robot</strong><p>Great mobility for rough terrain</p></div>
+              </article>
+            </div>
+          </div>
+
+          <div class="plan-card">
+            <div class="plan-icon" aria-hidden="true"></div>
+            <strong>Plan &amp; Simulate</strong>
+            <p>Build your plan, simulate operations, and achieve your mission goals.</p>
+            <a class="start-button" href="#planning-workspace">Start Planning</a>
+            <div class="scenario-actions" aria-label="Scenario actions">
+              <a class="button ghost" href="./team.html">Team Setup</a>
+              <button class="button ghost" id="reset-all" type="button">Reset Plans</button>
+            </div>
+          </div>
         </div>
       </header>
 
-      <main class="workspace">
+      <main class="workspace" id="planning-workspace">
         <section class="panel project-brief">
           <div>
             <p class="panel-kicker">Project Requirements</p>
@@ -41,24 +134,15 @@
 
         <section class="team-tabs panel" id="team-tabs" aria-label="Teams"></section>
 
-        <section class="dashboard-grid">
-          <section class="panel controls-panel">
+        <section class="panel controls-panel round-one-board">
             <div class="panel-head">
-              <p class="panel-kicker">Resource Plan</p>
-              <h2 id="active-team-title">Team A</h2>
+              <p class="panel-kicker">Round 1</p>
+              <h2 id="active-team-title">Make Your Decisions</h2>
             </div>
             <div id="strategy-controls" class="strategy-controls"></div>
             <div id="resource-controls" class="resource-controls"></div>
-          </section>
-
-          <section class="panel site-panel">
-            <div class="panel-head">
-              <p class="panel-kicker">Site Flow Visual</p>
-              <h2>Temporary Storage to Work Zones</h2>
-            </div>
-            <div id="site-visual" class="site-visual"></div>
-          </section>
         </section>
+        <div id="site-visual" class="site-visual hidden-site-visual" aria-hidden="true"></div>
 
         <section class="panel kpi-panel">
           <div class="panel-head">
