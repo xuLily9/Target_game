@@ -48,103 +48,58 @@ const STRATEGIES = {
 };
 
 const RESOURCES = {
-  skilledWorkers: {
-    id: "skilledWorkers",
-    group: "human",
-    label: "Skilled Worker",
-    pluralLabel: "Skilled Workers",
-    shortLabel: "Skilled",
-    icon: "SW",
-    cost: 20,
-    capacity: 2,
-    supportLoad: 0,
-    productivity: 1,
-    safety: 1,
-    effort: 0,
-    note: "Experienced in operating equipment and complex construction tasks.",
-  },
-  generalWorkers: {
-    id: "generalWorkers",
-    group: "human",
-    label: "General Worker",
-    pluralLabel: "General Workers",
-    shortLabel: "General",
-    icon: "GW",
+  workers: {
+    id: "workers",
+    label: "Construction Workers",
+    shortLabel: "Workers",
+    icon: "H",
     cost: 10,
     capacity: 1,
     supportLoad: 0,
     productivity: 0,
     safety: 0,
     effort: 0,
-    note: "Supports material handling, loading/unloading, and site activities.",
+    note: "Workers provide manual transport capacity after robot support is covered.",
   },
-  operators: {
-    id: "operators",
-    group: "human",
-    label: "Operator",
-    pluralLabel: "Operators",
-    shortLabel: "Operators",
-    icon: "OP",
-    cost: 15,
-    capacity: 1.5,
-    supportLoad: 0,
-    productivity: 1,
-    safety: 2,
-    effort: 0,
-    note: "Operates machinery and oversees robotic equipment on site.",
-  },
-  deliveryRobots: {
-    id: "deliveryRobots",
-    group: "robot",
-    label: "Delivery Robot",
-    pluralLabel: "Delivery Robots",
-    shortLabel: "Delivery",
-    icon: "DR",
-    cost: 30,
+  basicRobots: {
+    id: "basicRobots",
+    label: "Basic Robots",
+    shortLabel: "Basic",
+    icon: "B",
+    cost: 20,
     capacity: 3,
     supportLoad: 0.5,
     productivity: 5,
     safety: 5,
     effort: 8,
-    note: "Designed for efficient transport of materials in structured environments.",
+    note: "Low-cost robot transport with light human support demand.",
   },
-  quadrupedRobots: {
-    id: "quadrupedRobots",
-    group: "robot",
-    label: "Quadruped Robot",
-    pluralLabel: "Quadruped Robots",
-    shortLabel: "Quadruped",
-    icon: "QR",
-    cost: 50,
+  advancedRobots: {
+    id: "advancedRobots",
+    label: "Advanced Robots",
+    shortLabel: "Advanced",
+    icon: "A",
+    cost: 35,
     capacity: 5,
     supportLoad: 1,
     productivity: 10,
     safety: 10,
     effort: 12,
-    note: "Built for rough terrain and complex sites where mobility matters most.",
+    note: "Higher productivity and safety benefit with one worker-day of support.",
   },
   fleets: {
     id: "fleets",
-    group: "robot",
-    label: "Multi-Robot Fleet",
-    pluralLabel: "Multi-Robot Fleets",
+    label: "Autonomous Robot Fleets",
     shortLabel: "Fleets",
-    icon: "MF",
-    cost: 80,
+    icon: "F",
+    cost: 60,
     capacity: 8,
     supportLoad: 3,
     productivity: 18,
     safety: 8,
     effort: 18,
-    note: "A coordinated fleet system delivering high efficiency at large scale.",
+    note: "High-capacity automated fleet that needs intensive human support.",
   },
-};
-
-const HUMAN_RESOURCE_IDS = ["skilledWorkers", "generalWorkers", "operators"];
-const ROBOT_RESOURCE_IDS = ["deliveryRobots", "quadrupedRobots", "fleets"];
-const RESOURCE_LIMITS = {
-  human: 20,
-  robot: 12,
 };
 
 const DEFAULT_TEAMS = [
@@ -153,11 +108,9 @@ const DEFAULT_TEAMS = [
     label: "Team A",
     strategy: "human",
     resources: {
-      skilledWorkers: 0,
-      generalWorkers: 0,
-      operators: 0,
-      deliveryRobots: 0,
-      quadrupedRobots: 0,
+      workers: 20,
+      basicRobots: 0,
+      advancedRobots: 0,
       fleets: 0,
     },
   },
@@ -166,11 +119,9 @@ const DEFAULT_TEAMS = [
     label: "Team B",
     strategy: "collaborative",
     resources: {
-      skilledWorkers: 4,
-      generalWorkers: 4,
-      operators: 2,
-      deliveryRobots: 2,
-      quadrupedRobots: 1,
+      workers: 8,
+      basicRobots: 2,
+      advancedRobots: 2,
       fleets: 0,
     },
   },
@@ -179,11 +130,9 @@ const DEFAULT_TEAMS = [
     label: "Team C",
     strategy: "robot",
     resources: {
-      skilledWorkers: 2,
-      generalWorkers: 2,
-      operators: 2,
-      deliveryRobots: 1,
-      quadrupedRobots: 1,
+      workers: 6,
+      basicRobots: 1,
+      advancedRobots: 1,
       fleets: 2,
     },
   },
@@ -296,122 +245,59 @@ function renderTeamTabs(allMetrics, winners) {
 }
 
 function renderControls(team) {
-  const metrics = evaluateTeam(team);
-  const humanCount = getResourceCount(team, HUMAN_RESOURCE_IDS);
-  const robotCount = getResourceCount(team, ROBOT_RESOURCE_IDS);
-  const humanCapacity = getCapacityForIds(team, HUMAN_RESOURCE_IDS);
-  const robotCapacity = getCapacityForIds(team, ROBOT_RESOURCE_IDS);
-
-  activeTeamTitleEl.textContent = `${team.label} Round 1 Decision Sheet`;
+  activeTeamTitleEl.textContent = `${team.label} Decision Sheet`;
   strategyControlsEl.innerHTML = `
-    <div class="round-one-topline">
-      <div class="round-badge"><span>Round</span><strong>1</strong></div>
-      <div>
-        <h3>Round 1 - Make Your Decisions</h3>
-        <p>Plan your resources to meet the daily capacity target within budget.</p>
-      </div>
-      <div class="round-stat capacity">
-        <span class="round-stat-icon gauge-symbol" aria-hidden="true"></span>
-        <div><span>Capacity Target</span><strong>20 Units / Day</strong><small>Total capacity you need to achieve</small></div>
-      </div>
-      <div class="round-stat budget">
-        <span class="round-stat-icon credit-symbol" aria-hidden="true"></span>
-        <div><span>Budget Limit</span><strong>200 Credits</strong><small>Total budget for this round</small></div>
-      </div>
-      <div class="mission-progress">
-        <span>Mission Progress</span>
-        <div><strong>1</strong><i></i><em>2</em></div>
-        <small>Round 1&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Round 2</small>
-      </div>
+    <div class="control-heading">
+      <span>Round 2 Strategy</span>
+      <strong>${STRATEGIES[team.strategy].name}</strong>
     </div>
-
-    <div class="round-tabs" aria-label="Decision categories">
-      <button class="active" type="button"><span class="tab-person" aria-hidden="true"></span> Human Workers</button>
-      <button type="button"><span class="tab-equipment" aria-hidden="true"></span> Equipment</button>
-      <button type="button"><span class="tab-support" aria-hidden="true"></span> Site Support</button>
+    <div class="strategy-options">
+      ${Object.values(STRATEGIES)
+        .map(
+          (strategy) => `
+            <button class="strategy-option ${team.strategy === strategy.id ? "selected" : ""}" data-strategy-id="${strategy.id}" type="button">
+              <span>${strategy.name}</span>
+              <small>Cost ${strategy.cost} | P ${signed(strategy.productivity)} | S ${signed(strategy.safety)} | E ${signed(strategy.effort)}</small>
+            </button>
+          `
+        )
+        .join("")}
     </div>
   `;
 
-  resourceControlsEl.innerHTML = `
-    <div class="round-selection-layout">
-      <div class="allocation-panel">
-        <div class="allocation-heading">
-          <span class="section-number">1</span>
+  resourceControlsEl.innerHTML = Object.values(RESOURCES)
+    .map((resource) => {
+      const value = getResourceValue(team, resource.id);
+      return `
+        <article class="resource-row">
           <div>
-            <h3>Allocate Your Resources</h3>
-            <p>Choose the right mix of human workers and robots to achieve the target capacity.</p>
+            <strong>${resource.label}</strong>
+            <p>${resource.note}</p>
+            <span class="resource-meta">Cost ${resource.cost} | Capacity ${resource.capacity}/day | Support ${resource.supportLoad}</span>
           </div>
-        </div>
-
-        <section class="resource-section human-section">
-          <div class="resource-section-head">
-            <div><span class="section-icon person-icon" aria-hidden="true"></span><h4>Human Workers</h4></div>
-            <strong>Max Available: ${RESOURCE_LIMITS.human} Workers</strong>
+          <div class="stepper" aria-label="${resource.label}">
+            <button class="icon-button" data-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}">-</button>
+            <input data-resource-input="${resource.id}" type="number" min="0" max="30" value="${value}" />
+            <button class="icon-button" data-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}">+</button>
           </div>
-          <div class="round-card-grid">
-            ${HUMAN_RESOURCE_IDS.map((resourceId) => renderRoundResourceCard(team, resourceId)).join("")}
-          </div>
-        </section>
+        </article>
+      `;
+    })
+    .join("");
 
-        <section class="resource-section robot-section">
-          <div class="resource-section-head">
-            <div><span class="section-icon robot-icon" aria-hidden="true"></span><h4>Robots</h4></div>
-            <strong>Max Available: ${RESOURCE_LIMITS.robot} Robots / Fleet</strong>
-          </div>
-          <div class="round-card-grid">
-            ${ROBOT_RESOURCE_IDS.map((resourceId) => renderRoundResourceCard(team, resourceId)).join("")}
-          </div>
-        </section>
-
-        <div class="round-tip">
-          <strong>Tip</strong>
-          <span>Consider the site conditions and material demand to choose the best mix of resources.</span>
-        </div>
-      </div>
-
-      <aside class="selection-summary">
-        <h3><span class="summary-icon" aria-hidden="true"></span>Your Selection Summary</h3>
-
-        <div class="summary-block human">
-          <h4>Human Workers</h4>
-          ${HUMAN_RESOURCE_IDS.map((resourceId) => renderSummaryRow(team, resourceId)).join("")}
-          <div class="summary-total"><span>Total Human Capacity</span><strong>${formatNumber(humanCapacity)} Units / Day</strong></div>
-        </div>
-
-        <div class="summary-block robot">
-          <h4>Robots / Fleets</h4>
-          ${ROBOT_RESOURCE_IDS.map((resourceId) => renderSummaryRow(team, resourceId)).join("")}
-          <div class="summary-total"><span>Total Robot Capacity</span><strong>${formatNumber(robotCapacity)} Units / Day</strong></div>
-        </div>
-
-        <div class="summary-metric">
-          <span class="summary-gauge" aria-hidden="true"></span>
-          <div><span>Total Expected Capacity</span><strong>${formatNumber(metrics.netCapacity)} Units / Day</strong><small>Target: ${PROJECT.requiredDailyCapacity} Units / Day</small></div>
-        </div>
-
-        <div class="summary-metric cost">
-          <span class="summary-credit" aria-hidden="true"></span>
-          <div><span>Estimated Total Cost</span><strong>${formatCredits(metrics.totalCost)}</strong><small>Budget Limit: ${formatCredits(PROJECT.budgetLimit)}</small></div>
-        </div>
-
-        <div class="summary-note">
-          <strong>Note</strong>
-          <span>Actual results will be calculated in the Results Dashboard based on your strategy and site conditions.</span>
-        </div>
-
-        <div class="summary-actions">
-          <button class="summary-reset" data-round-reset type="button">Reset</button>
-          <a class="summary-confirm" href="#kpi-grid">Confirm &amp; Calculate <span>Proceed to Round 1 Results</span></a>
-        </div>
-      </aside>
-    </div>
-  `;
+  strategyControlsEl.querySelectorAll("[data-strategy-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      team.strategy = button.dataset.strategyId;
+      persistState();
+      render();
+    });
+  });
 
   resourceControlsEl.querySelectorAll("[data-resource-id]").forEach((button) => {
     button.addEventListener("click", () => {
       const resourceId = button.dataset.resourceId;
       const delta = button.dataset.action === "increment" ? 1 : -1;
-      team.resources[resourceId] = clampResourceQuantity(team, resourceId, getResourceValue(team, resourceId) + delta);
+      team.resources[resourceId] = clampQuantity(getResourceValue(team, resourceId) + delta);
       persistState();
       render();
     });
@@ -419,61 +305,11 @@ function renderControls(team) {
 
   resourceControlsEl.querySelectorAll("[data-resource-input]").forEach((input) => {
     input.addEventListener("input", () => {
-      team.resources[input.dataset.resourceInput] = clampResourceQuantity(team, input.dataset.resourceInput, Number(input.value));
+      team.resources[input.dataset.resourceInput] = clampQuantity(Number(input.value));
       persistState();
       render();
     });
   });
-
-  const resetButton = resourceControlsEl.querySelector("[data-round-reset]");
-  resetButton?.addEventListener("click", () => {
-    Object.keys(team.resources).forEach((resourceId) => {
-      team.resources[resourceId] = 0;
-    });
-    persistState();
-    render();
-  });
-}
-
-function renderRoundResourceCard(team, resourceId) {
-  const resource = RESOURCES[resourceId];
-  const value = getResourceValue(team, resourceId);
-  return `
-    <article class="round-resource-card ${resource.group} ${resource.id}">
-      <div class="resource-check" aria-hidden="true"></div>
-      <div class="resource-portrait ${resource.id}" aria-hidden="true"></div>
-      <div class="resource-card-copy">
-        <h5>${resource.label}</h5>
-        <p>${resource.note}</p>
-        <div class="capacity-chip"><span class="${resource.group === "robot" ? "robot-icon" : "person-icon"}" aria-hidden="true"></span><small>Capacity Contribution</small><strong>${formatNumber(resource.capacity)} ${resource.capacity === 1 ? "Unit" : "Units"} / Day</strong></div>
-      </div>
-      <div class="round-card-footer">
-        <label for="${resource.id}-input">Select Number</label>
-        <div class="stepper round-stepper" aria-label="${resource.label}">
-          <button class="icon-button" data-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}">-</button>
-          <input id="${resource.id}-input" data-resource-input="${resource.id}" type="number" min="0" max="30" value="${value}" />
-          <button class="icon-button" data-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}">+</button>
-        </div>
-        <span>Cost<br />${resource.cost} Credits / ${resource.group === "robot" && resource.id === "fleets" ? "Fleet" : resource.group === "robot" ? "Robot" : resource.label.includes("Operator") ? "Operator" : "Worker"} / Day</span>
-      </div>
-    </article>
-  `;
-}
-
-function renderSummaryRow(team, resourceId) {
-  const resource = RESOURCES[resourceId];
-  const value = getResourceValue(team, resourceId);
-  const capacity = value * resource.capacity;
-  return `
-    <div class="summary-row">
-      <span class="${resource.group === "robot" ? "robot-icon" : "person-icon"}" aria-hidden="true"></span>
-      <strong>${resource.pluralLabel}</strong>
-      <b>${value}</b>
-      <em>x ${formatNumber(resource.capacity)}</em>
-      <i>=</i>
-      <b>${formatNumber(capacity)}</b>
-    </div>
-  `;
 }
 
 function renderSiteVisual(team, metrics) {
