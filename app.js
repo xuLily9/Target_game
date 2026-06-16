@@ -35,15 +35,16 @@ const RESOURCES = [
     accent: "blue",
   },
   {
-    id: "operators",
+    id: "supportWorkers",
     group: "human",
-    label: "Operators",
-    cardTitle: "Operator",
-    description: "Operates machinery and oversees robotic equipment on site.",
-    cost: 15,
-    capacity: 1.5,
-    capacityLabel: "1.5 Units / Day",
-    supportCapacity: 1.5,
+    label: "Robot Support Workers",
+    cardTitle: "Robot Support Worker",
+    description: "Dedicated support for robot operation; does not add direct material transport capacity.",
+    cost: 10,
+    capacity: 0,
+    capacityLabel: "1 Support Unit / Day",
+    contributionLabel: "Support Contribution",
+    supportCapacity: 1,
     visual: "worker operator",
     accent: "blue",
   },
@@ -57,6 +58,7 @@ const RESOURCES = [
     capacity: 3,
     capacityLabel: "3 Units / Day",
     supportLoad: 0.5,
+    supportLabel: "0.5 support workers per robot",
     visual: "robot delivery",
     accent: "green",
   },
@@ -70,6 +72,7 @@ const RESOURCES = [
     capacity: 5,
     capacityLabel: "5 Units / Day",
     supportLoad: 1,
+    supportLabel: "1 support worker per robot",
     visual: "robot quadruped",
     accent: "cyan",
   },
@@ -83,6 +86,7 @@ const RESOURCES = [
     capacity: 8,
     capacityLabel: "8 Units / Day",
     supportLoad: 3,
+    supportLabel: "3 support workers per fleet",
     visual: "robot fleet",
     accent: "purple",
   },
@@ -126,10 +130,16 @@ function createEmptyQuantities() {
 function loadState() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
+    const savedQuantities = { ...(saved?.quantities || {}) };
+    if (savedQuantities.operators && !savedQuantities.supportWorkers) {
+      savedQuantities.supportWorkers = savedQuantities.operators;
+    }
+    delete savedQuantities.operators;
+
     return {
       quantities: {
         ...createEmptyQuantities(),
-        ...(saved?.quantities || {}),
+        ...savedQuantities,
       },
       confirmed: Boolean(saved?.confirmed),
     };
@@ -173,8 +183,9 @@ function renderResourceCards(group, container, metrics) {
               <p>${resource.description}</p>
               <div class="capacity-pill">
                 <span class="mini-icon ${resource.group === "human" ? "human-icon" : "robot-icon"}" aria-hidden="true"></span>
-                <span><small>Capacity Contribution</small>${resource.capacityLabel}</span>
+                <span><small>${resource.contributionLabel || "Capacity Contribution"}</small>${resource.capacityLabel}</span>
               </div>
+              ${resource.supportLabel ? `<div class="support-rule">Support required: ${resource.supportLabel}</div>` : ""}
             </div>
           </div>
           <div class="quantity-row">
@@ -261,7 +272,7 @@ function renderSummary(metrics) {
       <h3><span class="mini-icon human-icon" aria-hidden="true"></span>Human Workers</h3>
       <div class="summary-table">${humanRows.join("")}</div>
       <div class="summary-total">
-        <span>Total Human Capacity</span>
+        <span>Total Human Transport Capacity</span>
         <strong>${formatNumber(metrics.humanCapacity)} Units / Day</strong>
       </div>
     </section>
@@ -278,15 +289,18 @@ function renderSummary(metrics) {
 }
 
 function renderSummaryRow(resource, quantity) {
-  const subtotal = quantity * resource.capacity;
+  const unitValue = resource.supportCapacity || resource.capacity;
+  const subtotal = quantity * unitValue;
+  const unitLabel = resource.supportCapacity ? "support" : "capacity";
   return `
     <div class="summary-row">
       <span>${resource.label}</span>
       <strong>${quantity}</strong>
       <em>x</em>
-      <b>${formatNumber(resource.capacity)}</b>
+      <b>${formatNumber(unitValue)}</b>
       <em>=</em>
       <strong>${formatNumber(subtotal)}</strong>
+      <small>${unitLabel}</small>
     </div>
   `;
 }
@@ -317,7 +331,7 @@ function renderResultCards(metrics) {
     <div>
       <small>Robot Support Check</small>
       <strong>${metrics.supportFeasible ? "PASS" : "FAIL"}</strong>
-      <p>Operators provide ${formatNumber(metrics.operatorSupportCapacity)} support units; robots require ${formatNumber(metrics.requiredSupport)}.</p>
+      <p>Robot Support Workers provide ${formatNumber(metrics.supportWorkerCapacity)} support units; robots require ${formatNumber(metrics.requiredSupport)}.</p>
     </div>
     <div>
       <small>Estimated Duration</small>
@@ -337,7 +351,7 @@ function renderConfirmation(metrics) {
   confirmationMessageEl.className = `confirmation-message ${metrics.round1Feasible ? "pass" : "fail"}`;
   confirmationMessageEl.textContent = metrics.round1Feasible
     ? "Round 1 feasible: your plan meets capacity, budget, schedule, and support checks."
-    : "Round 1 needs adjustment: check capacity, budget, schedule, or operator support.";
+    : "Round 1 needs adjustment: check capacity, budget, schedule, or robot support workers.";
 }
 
 function evaluateRound() {
@@ -351,11 +365,11 @@ function evaluateRound() {
   const totalCapacity = humanCapacity + robotCapacity;
   const totalCost = sum(RESOURCES, (resource) => getQuantity(resource.id) * resource.cost);
   const requiredSupport = sum(robotResources, (resource) => getQuantity(resource.id) * (resource.supportLoad || 0));
-  const operatorSupportCapacity = getQuantity("operators") * (getResource("operators").supportCapacity || 0);
+  const supportWorkerCapacity = getQuantity("supportWorkers") * (getResource("supportWorkers").supportCapacity || 0);
   const estimatedDuration = totalCapacity > 0 ? PROJECT.totalDemand / totalCapacity : 0;
   const capacityFeasible = totalCapacity >= PROJECT.requiredDailyCapacity;
   const budgetFeasible = totalCost <= PROJECT.budgetLimit;
-  const supportFeasible = requiredSupport <= operatorSupportCapacity || requiredSupport === 0;
+  const supportFeasible = requiredSupport <= supportWorkerCapacity || requiredSupport === 0;
   const scheduleFeasible = estimatedDuration > 0 && estimatedDuration <= PROJECT.days;
 
   return {
@@ -366,7 +380,7 @@ function evaluateRound() {
     totalCapacity,
     totalCost,
     requiredSupport,
-    operatorSupportCapacity,
+    supportWorkerCapacity,
     estimatedDuration,
     capacityFeasible,
     budgetFeasible,

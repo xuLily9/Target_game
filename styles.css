@@ -2113,6 +2113,42 @@ button {
   line-height: 1.42;
 }
 
+.support-rule {
+  margin-top: 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 152, 24, 0.26);
+  border-radius: 5px;
+  background: rgba(255, 152, 24, 0.1);
+  color: #ffd69a;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.support-rules {
+  display: grid;
+  grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 10px;
+  padding: 10px;
+  border: 1px solid rgba(255, 152, 24, 0.22);
+  border-radius: 6px;
+  background: rgba(255, 152, 24, 0.08);
+}
+
+.support-rules strong {
+  color: #ffd69a;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.support-rules span {
+  color: #d9e4ed;
+  font-size: 0.76rem;
+  line-height: 1.25;
+}
+
 .capacity-pill {
   display: grid;
   grid-template-columns: 24px 1fr;
@@ -2534,7 +2570,7 @@ button {
 
 .summary-row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 42px 20px 42px 20px 44px;
+  grid-template-columns: minmax(0, 1fr) 42px 20px 42px 20px 44px 58px;
   gap: 6px;
   align-items: center;
   min-height: 34px;
@@ -2552,6 +2588,11 @@ button {
 .summary-row em {
   text-align: right;
   font-style: normal;
+}
+
+.summary-row small {
+  color: #88a0b3;
+  font-size: 0.66rem;
 }
 
 .summary-total {
@@ -2772,6 +2813,10 @@ button {
     grid-template-columns: 1fr;
   }
 
+  .support-rules {
+    grid-template-columns: 1fr;
+  }
+
   .resource-card {
     min-height: 250px;
   }
@@ -2804,16 +2849,80 @@ button {
     grid-template-columns: minmax(0, 1fr) 30px 14px 30px 14px 34px;
     font-size: 0.78rem;
   }
+
+  .summary-row small {
+    display: none;
+  }
 }
 
 
 /* Round 1 workspace is appended after the restored scenario intro. */
 .round-app {
+  --bg: #03101d;
+  --panel: rgba(6, 25, 42, 0.94);
+  --panel-2: rgba(7, 34, 55, 0.94);
+  --line: rgba(98, 174, 230, 0.2);
+  --line-strong: rgba(112, 190, 249, 0.36);
+  --text: #edf6ff;
+  --muted: #a8bac9;
+  --blue: #2d9cff;
+  --green: #68d05f;
+  --orange: #ff9818;
+  --purple: #9b61ff;
+  --cyan: #35b8ff;
+  --danger: #ff5e70;
   color: var(--text);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   scroll-margin-top: 12px;
+  position: relative;
+  margin-top: 18px;
+  padding: 8px 0 22px;
+  background:
+    linear-gradient(rgba(2, 11, 21, 0.88), rgba(2, 11, 21, 0.94)),
+    url("./assets/scenario-site.png") center / cover fixed,
+    radial-gradient(circle at 20% 10%, rgba(45, 156, 255, 0.18), transparent 32%),
+    var(--bg);
+  box-shadow: 0 0 0 100vmax rgba(3, 16, 29, 0.98);
+  clip-path: inset(0 -100vmax);
 }
 
 .app-shell {
   font-family: "IBM Plex Mono", monospace;
+}
+
+:root {
+  --bg: #eef4f8;
+  --panel: rgba(255, 255, 255, 0.96);
+  --panel-alt: #f6f9fb;
+  --ink: #17212f;
+  --muted: #5d6d7e;
+  --line: rgba(23, 33, 47, 0.12);
+  --accent: #1667a5;
+  --accent-2: #008f7a;
+  --warning: #a76a00;
+  --danger: #bc3045;
+  --pass: #16805f;
+  --shadow: 0 16px 36px rgba(33, 48, 66, 0.1);
+  --radius: 8px;
+}
+
+body {
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--ink);
+  background:
+    linear-gradient(0deg, rgba(23, 33, 47, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(23, 33, 47, 0.04) 1px, transparent 1px),
+    linear-gradient(180deg, #061827 0%, #0a263a 540px, var(--bg) 541px, var(--bg) 100%);
+  background-size: 28px 28px, 28px 28px, auto;
+}
+
+.scenario-actions .button.ghost {
+  min-height: 34px;
+  padding: 7px 8px;
+  color: #f4f8fb;
+  background: rgba(8, 30, 49, 0.76);
+  border: 1px solid rgba(117, 200, 255, 0.32);
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 0.78rem;
+  text-transform: none;
 }

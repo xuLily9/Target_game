@@ -191,6 +191,12 @@
               </div>
               <p>Max Available: <strong id="robot-limit-label">12 Robots / Fleet</strong></p>
             </div>
+            <div class="support-rules" aria-label="Robot support requirements">
+              <strong>Robot Support Requirements</strong>
+              <span>Delivery Robots: 0.5 support workers per robot</span>
+              <span>Quadruped Robots: 1 support worker per robot</span>
+              <span>Multi-Robot Fleets: 3 support workers per fleet</span>
+            </div>
             <div class="resource-grid" id="robot-resource-grid"></div>
           </section>
 
@@ -217,7 +223,7 @@
             <span class="note-icon">i</span>
             <div>
               <strong>Note</strong>
-              <p>Round 1 calculations follow the Final_HRC workbook logic: capacity target, budget limit, project duration, and robot support feasibility are checked live.</p>
+              <p>Robot Support Workers cost 10 credits each and provide 1 support unit/day. They support robot operation only and do not add direct transport capacity.</p>
             </div>
           </div>
 
