@@ -2876,7 +2876,8 @@ button {
   scroll-margin-top: 12px;
   position: relative;
   margin-top: 18px;
-  padding: 8px 0 22px;
+  padding: 18px 0 22px;
+  border-top: 2px solid rgba(255, 255, 255, 0.82);
   background:
     linear-gradient(rgba(2, 11, 21, 0.88), rgba(2, 11, 21, 0.94)),
     url("./assets/scenario-site.png") center / cover fixed,
@@ -2941,10 +2942,11 @@ body {
   --r2-orange: #ff9818;
   --r2-danger: #ff5e70;
   width: min(1510px, calc(100% - 28px));
-  margin: 0 auto 24px;
-  padding: 14px 0 26px;
+  margin: 34px auto 24px;
+  padding: 22px 0 26px;
   color: var(--r2-text);
   font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  border-top: 2px solid rgba(255, 255, 255, 0.82);
   background:
     linear-gradient(rgba(2, 11, 21, 0.9), rgba(2, 11, 21, 0.96)),
     url("./assets/scenario-site.png") center / cover fixed,
