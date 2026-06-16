@@ -1,4 +1,7 @@
-const STORAGE_KEY = "construction-logistics-round-1-v2";
+const STORAGE_KEY = "construction-logistics-round-1-v3";
+const WORKSHOP_TEAMS_KEY = "construction-workshop-teams-v3";
+const ACTIVE_TEAM_ID_KEY = "construction-workshop-active-team-id-v3";
+const SESSION_TEAM_ID_KEY = "construction-workshop-session-team-id-v3";
 
 const PROJECT = {
   totalDemand: 100,
@@ -54,7 +57,7 @@ const RESOURCES = [
     label: "Delivery Robots",
     cardTitle: "Delivery Robot",
     description: "Designed for efficient transport of materials in structured environments.",
-    cost: 30,
+    cost: 20,
     capacity: 3,
     capacityLabel: "3 Units / Day",
     supportLoad: 0.5,
@@ -68,7 +71,7 @@ const RESOURCES = [
     label: "Quadruped Robots",
     cardTitle: "Quadruped Robot",
     description: "Built for rough terrain and complex sites where mobility matters most.",
-    cost: 50,
+    cost: 35,
     capacity: 5,
     capacityLabel: "5 Units / Day",
     supportLoad: 1,
@@ -82,7 +85,7 @@ const RESOURCES = [
     label: "Multi-Robot Fleets",
     cardTitle: "Multi-Robot Fleet",
     description: "A coordinated fleet system delivering high efficiency at large scale.",
-    cost: 80,
+    cost: 60,
     capacity: 8,
     capacityLabel: "8 Units / Day",
     supportLoad: 3,
@@ -203,6 +206,10 @@ const confirmationMessageEl = document.getElementById("confirmation-message");
 const resetButton = document.getElementById("reset-round");
 const scenarioResetButton = document.getElementById("reset-scenario");
 const confirmButton = document.getElementById("confirm-round");
+const activeTeamCardEl = document.getElementById("active-team-card");
+const startPlanningLink = document.getElementById("start-planning");
+const workshopTeamBannerEl = document.getElementById("workshop-team-banner");
+const round1SummaryBoardEl = document.getElementById("round1-summary-board");
 const round2StrategyGridEl = document.getElementById("round2-strategy-grid");
 const round2ResourceGridEl = document.getElementById("round2-resource-grid");
 const round2ConstraintsEl = document.getElementById("round2-constraints");
@@ -212,12 +219,22 @@ const round2FinalValueEl = document.getElementById("round2-final-value");
 const round2ConfirmationEl = document.getElementById("round2-confirmation");
 const resetRound2Button = document.getElementById("reset-round2");
 const confirmRound2Button = document.getElementById("confirm-round2");
+const round2SummaryBoardEl = document.getElementById("round2-summary-board");
 
 resetButton.addEventListener("click", resetRound);
 scenarioResetButton?.addEventListener("click", resetRound);
 resetRound2Button?.addEventListener("click", resetRound2);
 
 function resetRound() {
+  if (!getActiveTeam()) {
+    render();
+    return;
+  }
+  if (isRound1Locked()) {
+    state.confirmed = true;
+    render();
+    return;
+  }
   state.quantities = createEmptyQuantities();
   state.confirmed = false;
   persistState();
@@ -225,13 +242,42 @@ function resetRound() {
 }
 
 confirmButton.addEventListener("click", () => {
+  const activeTeam = getActiveTeam();
+  if (!activeTeam) {
+    confirmationMessageEl.className = "confirmation-message fail";
+    confirmationMessageEl.textContent = "Please create or select a numeric Team ID before submitting Round 1.";
+    return;
+  }
+  if (isRound1Locked()) {
+    render();
+    return;
+  }
+  const metrics = evaluateRound();
   state.confirmed = true;
+  saveRound1Submission(metrics);
   persistState();
   render();
 });
 
 confirmRound2Button?.addEventListener("click", () => {
+  const activeTeam = getActiveTeam();
+  if (!activeTeam) {
+    round2ConfirmationEl.className = "confirmation-message fail";
+    round2ConfirmationEl.textContent = "Please create or select a numeric Team ID before submitting Round 2.";
+    return;
+  }
+  if (!activeTeam.round1Submission) {
+    round2ConfirmationEl.className = "confirmation-message fail";
+    round2ConfirmationEl.textContent = "Submit Round 1 first, then Round 2 will unlock.";
+    return;
+  }
+  if (isRound2Locked()) {
+    render();
+    return;
+  }
+  const metrics = evaluateRound2();
   state.round2.confirmed = true;
+  saveRound2Submission(metrics);
   persistState();
   render();
 });
@@ -249,17 +295,34 @@ function createEmptyRound2Quantities() {
 function createDefaultRound2State() {
   return {
     strategy: "robot-led",
-    quantities: {
-      ...createEmptyRound2Quantities(),
-      supportWorkers: 4,
-      deliveryRobots: 4,
-      quadrupedRobots: 2,
-    },
+    quantities: createEmptyRound2Quantities(),
     confirmed: false,
   };
 }
 
 function loadState() {
+  const activeTeam = getActiveTeam();
+  if (activeTeam) {
+    const round1Source = activeTeam.round1Submission || activeTeam.round1Draft || {};
+    const round2Source = activeTeam.round2Submission || activeTeam.round2Draft || {};
+    return {
+      quantities: {
+        ...createEmptyQuantities(),
+        ...(round1Source.quantities || {}),
+      },
+      confirmed: Boolean(activeTeam.round1Submission),
+      round2: {
+        ...createDefaultRound2State(),
+        ...round2Source,
+        quantities: {
+          ...createEmptyRound2Quantities(),
+          ...(round2Source.quantities || {}),
+        },
+        confirmed: Boolean(activeTeam.round2Submission),
+      },
+    };
+  }
+
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY));
     const savedQuantities = { ...(saved?.quantities || {}) };
@@ -295,27 +358,215 @@ function loadState() {
 
 function persistState() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+  persistActiveTeamDrafts();
+}
+
+function loadTeams() {
+  return loadJson(WORKSHOP_TEAMS_KEY, []);
+}
+
+function saveTeams(teams) {
+  localStorage.setItem(WORKSHOP_TEAMS_KEY, JSON.stringify(teams));
+}
+
+function loadJson(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function getActiveTeamId() {
+  const urlTeamId = getUrlTeamId();
+  if (urlTeamId) {
+    try {
+      sessionStorage.setItem(SESSION_TEAM_ID_KEY, urlTeamId);
+    } catch {
+      // Ignore storage failures; URL still identifies the team for this page.
+    }
+    return urlTeamId;
+  }
+
+  try {
+    const sessionTeamId = sessionStorage.getItem(SESSION_TEAM_ID_KEY);
+    if (sessionTeamId) return sessionTeamId;
+  } catch {
+    // Fall back to the last selected team below.
+  }
+
+  return localStorage.getItem(ACTIVE_TEAM_ID_KEY) || "";
+}
+
+function getUrlTeamId() {
+  if (typeof window === "undefined") return "";
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const teamId = params.get("team");
+    return teamId && /^\d+$/.test(teamId) ? teamId : "";
+  } catch {
+    return "";
+  }
+}
+
+function getActiveTeam() {
+  const activeTeamId = getActiveTeamId();
+  if (!activeTeamId) return null;
+  return loadTeams().find((team) => String(team.teamId) === String(activeTeamId)) || null;
+}
+
+function updateActiveTeam(updater) {
+  const activeTeamId = getActiveTeamId();
+  if (!activeTeamId) return null;
+  const teams = loadTeams();
+  const index = teams.findIndex((team) => String(team.teamId) === String(activeTeamId));
+  if (index === -1) return null;
+  const nextTeam = updater({ ...teams[index] });
+  teams[index] = {
+    ...nextTeam,
+    updatedAt: new Date().toISOString(),
+  };
+  saveTeams(teams);
+  return teams[index];
+}
+
+function persistActiveTeamDrafts() {
+  const activeTeam = getActiveTeam();
+  if (!activeTeam) return;
+  updateActiveTeam((team) => {
+    if (!team.round1Submission) {
+      team.round1Draft = {
+        quantities: { ...state.quantities },
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    if (!team.round2Submission) {
+      team.round2Draft = {
+        strategy: state.round2.strategy,
+        quantities: { ...state.round2.quantities },
+        updatedAt: new Date().toISOString(),
+      };
+    }
+    return team;
+  });
+}
+
+function saveRound1Submission(metrics) {
+  updateActiveTeam((team) => ({
+    ...team,
+    round1Draft: {
+      quantities: { ...state.quantities },
+      updatedAt: new Date().toISOString(),
+    },
+    round1Submission: {
+      quantities: { ...state.quantities },
+      metrics: snapshotRound1Metrics(metrics),
+      submittedAt: new Date().toISOString(),
+    },
+  }));
+}
+
+function saveRound2Submission(metrics) {
+  updateActiveTeam((team) => ({
+    ...team,
+    round2Draft: {
+      strategy: state.round2.strategy,
+      quantities: { ...state.round2.quantities },
+      updatedAt: new Date().toISOString(),
+    },
+    round2Submission: {
+      strategy: state.round2.strategy,
+      quantities: { ...state.round2.quantities },
+      metrics: snapshotRound2Metrics(metrics),
+      submittedAt: new Date().toISOString(),
+    },
+  }));
+}
+
+function isRound1Locked() {
+  return Boolean(getActiveTeam()?.round1Submission);
+}
+
+function isRound2Locked() {
+  return Boolean(getActiveTeam()?.round2Submission);
+}
+
+function isRound2Unlocked() {
+  return Boolean(getActiveTeam()?.round1Submission);
+}
+
+function getTeamLabel(team) {
+  return `Team ${team.teamId}`;
 }
 
 function render() {
   const metrics = evaluateRound();
+  renderTeamStatus();
   renderResourceCards("human", humanGridEl, metrics);
   renderResourceCards("robot", robotGridEl, metrics);
   renderSummary(metrics);
   renderResultCards(metrics);
   renderConfirmation(metrics);
+  renderRound1SummaryBoard();
   renderRound2();
+  renderRound2SummaryBoard();
+}
+
+function renderTeamStatus() {
+  const activeTeam = getActiveTeam();
+  if (startPlanningLink) {
+    startPlanningLink.href = activeTeam ? getTeamGameUrl(activeTeam.teamId, "planning-workspace") : "./team.html";
+    startPlanningLink.textContent = activeTeam ? "Start Round 1" : "Team Setup";
+  }
+
+  if (activeTeamCardEl) {
+    activeTeamCardEl.innerHTML = activeTeam
+      ? `<span>Active Team</span><strong>${getTeamLabel(activeTeam)}</strong><small>${getSubmissionStatusText(activeTeam)}</small>`
+      : `<span>Team Setup Required</span><strong>No active team</strong><small>Create or select a numeric Team ID before planning.</small>`;
+  }
+
+  if (!workshopTeamBannerEl) return;
+  workshopTeamBannerEl.className = `workshop-team-banner ${activeTeam ? "" : "warning"}`;
+  workshopTeamBannerEl.innerHTML = activeTeam
+    ? `
+      <div>
+        <span>Current Workshop Team</span>
+        <strong>${getTeamLabel(activeTeam)}</strong>
+        <small>${activeTeam.participants || "No participants listed"}</small>
+      </div>
+      <a href="./team.html">Switch / Create Team</a>
+    `
+    : `
+      <div>
+        <span>Team Setup Required</span>
+        <strong>Create a numeric Team ID first</strong>
+        <small>Submissions are saved per team and locked after final submission.</small>
+      </div>
+      <a href="./team.html">Team Setup</a>
+    `;
+}
+
+function getSubmissionStatusText(team) {
+  if (team.round2Submission) return "Round 1 + Round 2 submitted and locked";
+  if (team.round1Submission) return "Round 1 submitted; Round 2 is open";
+  return "Ready for Round 1";
+}
+
+function getTeamGameUrl(teamId, hash = "planning-workspace") {
+  return `./index.html?team=${encodeURIComponent(teamId)}#${hash}`;
 }
 
 function renderResourceCards(group, container, metrics) {
+  const locked = !getActiveTeam() || isRound1Locked();
   container.innerHTML = RESOURCES.filter((resource) => resource.group === group)
     .map((resource) => {
       const value = getQuantity(resource.id);
       const groupTotal = group === "human" ? metrics.humanCount : metrics.robotCount;
       const maxForResource = Math.max(0, getGroupLimit(group) - (groupTotal - value));
-      const canIncrement = value < maxForResource;
+      const canIncrement = !locked && value < maxForResource;
       return `
-        <article class="resource-card ${resource.group} ${resource.accent}">
+        <article class="resource-card ${resource.group} ${resource.accent} ${locked ? "locked" : ""}">
           <div class="select-box ${value > 0 ? "checked" : ""}" aria-hidden="true"></div>
           <div class="resource-main">
             <div class="resource-visual ${resource.visual}" aria-hidden="true">
@@ -334,8 +585,8 @@ function renderResourceCards(group, container, metrics) {
           <div class="quantity-row">
             <span>Select Number</span>
             <div class="stepper">
-              <button data-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}" ${value <= 0 ? "disabled" : ""}>-</button>
-              <input data-resource-input="${resource.id}" type="number" min="0" max="${getGroupLimit(group)}" value="${value}" aria-label="${resource.label} quantity" />
+              <button data-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}" ${locked || value <= 0 ? "disabled" : ""}>-</button>
+              <input data-resource-input="${resource.id}" type="number" min="0" max="${getGroupLimit(group)}" value="${value}" aria-label="${resource.label} quantity" ${locked ? "disabled" : ""} />
               <button data-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}" ${canIncrement ? "" : "disabled"}>+</button>
             </div>
           </div>
@@ -485,6 +736,21 @@ function renderResultCards(metrics) {
 }
 
 function renderConfirmation(metrics) {
+  const activeTeam = getActiveTeam();
+  const locked = !activeTeam || isRound1Locked();
+  if (resetButton) resetButton.disabled = locked;
+  if (confirmButton) {
+    confirmButton.disabled = locked;
+    const labelEl = confirmButton.querySelector("span");
+    if (labelEl) {
+      labelEl.innerHTML = !activeTeam
+        ? `Team Setup Required<small>Create/select a Team ID first</small>`
+        : locked
+        ? `Round 1 Submitted<small>Final submission locked</small>`
+        : `Confirm &amp; Calculate<small>Submit Round 1 final plan</small>`;
+    }
+  }
+
   if (!state.confirmed) {
     confirmationMessageEl.textContent = "";
     confirmationMessageEl.className = "confirmation-message";
@@ -492,9 +758,183 @@ function renderConfirmation(metrics) {
   }
 
   confirmationMessageEl.className = `confirmation-message ${metrics.round1Feasible ? "pass" : "fail"}`;
-  confirmationMessageEl.textContent = metrics.round1Feasible
-    ? "Round 1 feasible: your plan meets capacity, budget, schedule, and support checks."
-    : "Round 1 needs adjustment: check capacity, budget, schedule, or robot support workers.";
+  confirmationMessageEl.textContent = locked
+    ? metrics.round1Feasible
+      ? "Round 1 final submission is locked and feasible. Summary unlocks after every team submits Round 1."
+      : "Round 1 final submission is recorded, but this plan is not feasible. It will not be eligible to win Round 1."
+    : metrics.round1Feasible
+      ? "Round 1 submitted successfully. Your final plan is now locked."
+      : "Round 1 submitted. This plan is not feasible, so it will appear as Not feasible in the summary.";
+}
+
+function renderRound1SummaryBoard() {
+  if (!round1SummaryBoardEl) return;
+  const teams = loadTeams();
+  const submittedTeams = teams.filter((team) => team.round1Submission);
+  if (!areAllTeamsSubmitted(teams, "round1Submission")) {
+    round1SummaryBoardEl.innerHTML = renderLockedSubmissionBoard({
+      roundLabel: "Round 1",
+      title: "Round 1 Summary Locked",
+      helper: "The summary board will reveal all choices and the winner after every created team submits Round 1.",
+      submittedCount: submittedTeams.length,
+      totalCount: teams.length,
+    });
+    return;
+  }
+
+  const winner = getRound1Winner(submittedTeams);
+  round1SummaryBoardEl.innerHTML = renderSubmissionBoard({
+    roundLabel: "Round 1",
+    title: "Round 1 Submission Summary",
+    helper: "Lowest-cost feasible solution wins. Submitted teams are locked.",
+    submittedTeams,
+    winner,
+    columns: ["Team", "Selection", "Capacity", "Support", "Cost", "Feasible", "Result"],
+    rowRenderer: renderRound1SummaryRow,
+  });
+}
+
+function renderRound2SummaryBoard() {
+  if (!round2SummaryBoardEl) return;
+  const teams = loadTeams();
+  const submittedTeams = teams.filter((team) => team.round2Submission);
+  if (!areAllTeamsSubmitted(teams, "round2Submission")) {
+    round2SummaryBoardEl.innerHTML = renderLockedSubmissionBoard({
+      roundLabel: "Round 2",
+      title: "Round 2 Summary Locked",
+      helper: "The final value board will reveal all choices and the winner after every created team submits Round 2.",
+      submittedCount: submittedTeams.length,
+      totalCount: teams.length,
+    });
+    return;
+  }
+
+  const winner = getRound2Winner(submittedTeams);
+  round2SummaryBoardEl.innerHTML = renderSubmissionBoard({
+    roundLabel: "Round 2",
+    title: "Round 2 Final Submission Summary",
+    helper: "Highest eligible strategy-weighted final value wins; lower cost breaks ties.",
+    submittedTeams,
+    winner,
+    columns: ["Team", "Strategy", "Selection", "Final Value", "Cost", "Eligible", "Result"],
+    rowRenderer: renderRound2SummaryRow,
+  });
+}
+
+function areAllTeamsSubmitted(teams, submissionKey) {
+  return teams.length > 0 && teams.every((team) => Boolean(team[submissionKey]));
+}
+
+function renderLockedSubmissionBoard({ roundLabel, title, helper, submittedCount, totalCount }) {
+  const progress = totalCount > 0 ? `${submittedCount} / ${totalCount}` : "0 / 0";
+  const percent = totalCount > 0 ? Math.round((submittedCount / totalCount) * 100) : 0;
+  return `
+    <div class="submission-board-header">
+      <div>
+        <span>${roundLabel}</span>
+        <h2>${title}</h2>
+        <p>${helper}</p>
+      </div>
+      <strong>${progress} Submitted</strong>
+    </div>
+    <div class="summary-lock-card">
+      <div>
+        <small>Hidden Until Complete</small>
+        <strong>Choices and winner are not visible yet.</strong>
+        <p>Create the full team roster first, then each team submits once. This prevents early teams from seeing other teams' plans.</p>
+      </div>
+      <div class="summary-lock-meter" aria-label="${percent}% submitted">
+        <span style="width:${percent}%"></span>
+      </div>
+    </div>
+  `;
+}
+
+function renderSubmissionBoard({ roundLabel, title, helper, submittedTeams, winner, columns, rowRenderer }) {
+  const rows = submittedTeams.length
+    ? submittedTeams.map((team) => rowRenderer(team, winner)).join("")
+    : `<tr><td colspan="${columns.length}">No ${roundLabel} submissions yet.</td></tr>`;
+
+  return `
+    <div class="submission-board-header">
+      <div>
+        <span>${roundLabel}</span>
+        <h2>${title}</h2>
+        <p>${helper}</p>
+      </div>
+      <strong>${winner ? `${getTeamLabel(winner)} Wins` : "Waiting for submissions"}</strong>
+    </div>
+    <div class="submission-table-wrap">
+      <table class="submission-table">
+        <thead>
+          <tr>${columns.map((column) => `<th>${column}</th>`).join("")}</tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderRound1SummaryRow(team, winner) {
+  const submission = team.round1Submission;
+  const metrics = submission.metrics;
+  const isWinner = winner && String(winner.teamId) === String(team.teamId);
+  return `
+    <tr class="${isWinner ? "winner" : ""}">
+      <td><strong>${getTeamLabel(team)}</strong></td>
+      <td>${formatSelectionSummary(RESOURCES, submission.quantities)}</td>
+      <td>${formatNumber(metrics.totalCapacity)} Units/Day</td>
+      <td>${formatNumber(metrics.supportWorkerCapacity)} / ${formatNumber(metrics.requiredSupport)}</td>
+      <td>${formatNumber(metrics.totalCost)} Credits</td>
+      <td><span class="${metrics.round1Feasible ? "status-pass" : "status-fail"}">${metrics.round1Feasible ? "YES" : "NO"}</span></td>
+      <td>${isWinner ? "Winner" : metrics.round1Feasible ? "Feasible" : "Not feasible"}</td>
+    </tr>
+  `;
+}
+
+function renderRound2SummaryRow(team, winner) {
+  const submission = team.round2Submission;
+  const metrics = submission.metrics;
+  const isWinner = winner && String(winner.teamId) === String(team.teamId);
+  return `
+    <tr class="${isWinner ? "winner" : ""}">
+      <td><strong>${getTeamLabel(team)}</strong></td>
+      <td>${metrics.selectedStrategyLabel}</td>
+      <td>${formatSelectionSummary(ROUND2_RESOURCES, submission.quantities)}</td>
+      <td>${formatNumber(metrics.finalValue)} / 100</td>
+      <td>${formatNumber(metrics.totalCost)} Credits</td>
+      <td><span class="${metrics.eligible ? "status-pass" : "status-fail"}">${metrics.eligible ? "YES" : "NO"}</span></td>
+      <td>${isWinner ? "Winner" : metrics.eligible ? "Eligible" : "Not eligible"}</td>
+    </tr>
+  `;
+}
+
+function getRound1Winner(teams) {
+  return teams
+    .filter((team) => team.round1Submission.metrics.round1Feasible)
+    .sort((a, b) => a.round1Submission.metrics.totalCost - b.round1Submission.metrics.totalCost || Number(a.teamId) - Number(b.teamId))[0] || null;
+}
+
+function getRound2Winner(teams) {
+  return teams
+    .filter((team) => team.round2Submission.metrics.eligible)
+    .sort((a, b) => getRound2TieBreakScore(b) - getRound2TieBreakScore(a) || Number(a.teamId) - Number(b.teamId))[0] || null;
+}
+
+function getRound2TieBreakScore(team) {
+  const metrics = team.round2Submission.metrics;
+  if (Number.isFinite(metrics.tieBreakScore)) return metrics.tieBreakScore;
+  return metrics.finalValue + (ROUND2_PROJECT.budgetLimit - metrics.totalCost) / 10000;
+}
+
+function formatSelectionSummary(resources, quantities) {
+  const selected = resources
+    .map((resource) => {
+      const quantity = Number(quantities?.[resource.id] || 0);
+      return quantity > 0 ? `${resource.shortLabel || resource.label}: ${quantity}` : "";
+    })
+    .filter(Boolean);
+  return selected.length ? selected.join(" | ") : "-";
 }
 
 function evaluateRound() {
@@ -534,6 +974,10 @@ function evaluateRound() {
 }
 
 function resetRound2() {
+  if (!isRound2Unlocked() || isRound2Locked()) {
+    render();
+    return;
+  }
   state.round2 = createDefaultRound2State();
   persistState();
   render();
@@ -553,10 +997,11 @@ function renderRound2() {
 }
 
 function renderRound2Strategies() {
+  const locked = !isRound2Unlocked() || isRound2Locked();
   round2StrategyGridEl.innerHTML = ROUND2_STRATEGIES.map((strategy) => {
     const selected = state.round2.strategy === strategy.id;
     return `
-      <article class="strategy-card ${strategy.color} ${selected ? "selected" : ""}" data-r2-strategy="${strategy.id}">
+      <article class="strategy-card ${strategy.color} ${selected ? "selected" : ""} ${locked ? "locked" : ""}" data-r2-strategy="${strategy.id}">
         <div class="strategy-check" aria-hidden="true">${selected ? "✓" : ""}</div>
         <div class="strategy-visual ${strategy.id}" aria-hidden="true"></div>
         <h4>${strategy.label}</h4>
@@ -572,6 +1017,7 @@ function renderRound2Strategies() {
 
   round2StrategyGridEl.querySelectorAll("[data-r2-strategy]").forEach((card) => {
     card.addEventListener("click", () => {
+      if (locked) return;
       state.round2.strategy = card.dataset.r2Strategy;
       state.round2.confirmed = false;
       persistState();
@@ -631,14 +1077,15 @@ function renderRound2Resources(metrics) {
 }
 
 function renderRound2ResourceCard(resource, metrics) {
+    const locked = !isRound2Unlocked() || isRound2Locked();
     const value = getRound2Quantity(resource.id);
     const isHuman = resource.group === "human";
     const humanTotalWithoutCurrent = metrics.humanCount - (isHuman ? value : 0);
     const maxForResource = isHuman ? Math.max(0, ROUND2_PROJECT.maxHumanWorkers - humanTotalWithoutCurrent) : 99;
-    const canIncrement = value < maxForResource;
+    const canIncrement = !locked && value < maxForResource;
 
     return `
-      <article class="r2-resource-card ${resource.accent}">
+      <article class="r2-resource-card ${resource.accent} ${locked ? "locked" : ""}">
         <div class="r2-resource-visual ${resource.visual}" aria-hidden="true">
           ${renderVisualParts(resource.visual)}
         </div>
@@ -648,8 +1095,8 @@ function renderRound2ResourceCard(resource, metrics) {
         <div class="quantity-row">
           <span>Quantity</span>
           <div class="stepper r2-stepper">
-            <button data-r2-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}" ${value <= 0 ? "disabled" : ""}>-</button>
-            <input data-r2-resource-input="${resource.id}" type="number" min="0" max="${maxForResource}" value="${value}" aria-label="${resource.label} quantity" />
+            <button data-r2-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}" ${locked || value <= 0 ? "disabled" : ""}>-</button>
+            <input data-r2-resource-input="${resource.id}" type="number" min="0" max="${maxForResource}" value="${value}" aria-label="${resource.label} quantity" ${locked ? "disabled" : ""} />
             <button data-r2-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}" ${canIncrement ? "" : "disabled"}>+</button>
           </div>
         </div>
@@ -747,6 +1194,27 @@ function renderRound2FinalValue(metrics) {
 }
 
 function renderRound2Confirmation(metrics) {
+  const unlocked = isRound2Unlocked();
+  const locked = isRound2Locked();
+  if (resetRound2Button) resetRound2Button.disabled = !unlocked || locked;
+  if (confirmRound2Button) {
+    confirmRound2Button.disabled = !unlocked || locked;
+    const labelEl = confirmRound2Button.querySelector("span");
+    if (labelEl) {
+      labelEl.innerHTML = locked
+        ? `Round 2 Submitted<small>Final submission locked</small>`
+        : unlocked
+          ? `Confirm &amp; Calculate<small>Submit Round 2 final plan</small>`
+          : `Round 2 Locked<small>Submit Round 1 first</small>`;
+    }
+  }
+
+  if (!unlocked) {
+    round2ConfirmationEl.className = "confirmation-message fail";
+    round2ConfirmationEl.textContent = "Round 2 unlocks after this team submits Round 1.";
+    return;
+  }
+
   if (!state.round2.confirmed) {
     round2ConfirmationEl.textContent = "";
     round2ConfirmationEl.className = "confirmation-message";
@@ -754,9 +1222,13 @@ function renderRound2Confirmation(metrics) {
   }
 
   round2ConfirmationEl.className = `confirmation-message ${metrics.eligible ? "pass" : "fail"}`;
-  round2ConfirmationEl.textContent = metrics.eligible
-    ? `Round 2 feasible: final value ${formatNumber(metrics.finalValue)} with ${metrics.operationalMode.label} operations.`
-    : "Round 2 needs adjustment: check support workers, budget, capacity, and performance thresholds.";
+  round2ConfirmationEl.textContent = locked
+    ? metrics.eligible
+      ? `Round 2 final submission is locked: final value ${formatNumber(metrics.finalValue)}. Summary unlocks after every team submits Round 2.`
+      : "Round 2 final submission is recorded, but this plan is not eligible to win Round 2."
+    : metrics.eligible
+      ? `Round 2 submitted successfully: final value ${formatNumber(metrics.finalValue)}. Your final plan is now locked.`
+      : "Round 2 submitted. This plan is not eligible, so it will appear as Not eligible in the summary.";
 }
 
 function evaluateRound2() {
@@ -818,6 +1290,57 @@ function evaluateRound2() {
   };
 }
 
+function snapshotRound1Metrics(metrics) {
+  return {
+    humanCount: metrics.humanCount,
+    robotCount: metrics.robotCount,
+    humanCapacity: metrics.humanCapacity,
+    robotCapacity: metrics.robotCapacity,
+    totalCapacity: metrics.totalCapacity,
+    totalCost: metrics.totalCost,
+    requiredSupport: metrics.requiredSupport,
+    supportWorkerCapacity: metrics.supportWorkerCapacity,
+    estimatedDuration: metrics.estimatedDuration,
+    capacityFeasible: metrics.capacityFeasible,
+    budgetFeasible: metrics.budgetFeasible,
+    supportFeasible: metrics.supportFeasible,
+    scheduleFeasible: metrics.scheduleFeasible,
+    round1Feasible: metrics.round1Feasible,
+  };
+}
+
+function snapshotRound2Metrics(metrics) {
+  return {
+    humanCount: metrics.humanCount,
+    robotCount: metrics.robotCount,
+    humanCapacity: metrics.humanCapacity,
+    robotCapacity: metrics.robotCapacity,
+    netDailyCapacity: metrics.netDailyCapacity,
+    totalCost: metrics.totalCost,
+    requiredSupport: metrics.requiredSupport,
+    supportWorkerCapacity: metrics.supportWorkerCapacity,
+    productivity: metrics.productivity,
+    safety: metrics.safety,
+    effort: metrics.effort,
+    selectedStrategyId: metrics.selectedStrategy.id,
+    selectedStrategyLabel: metrics.selectedStrategy.label,
+    operationalModeId: metrics.operationalMode.id,
+    operationalModeLabel: metrics.operationalMode.label,
+    aligned: metrics.aligned,
+    weightedScore: metrics.weightedScore,
+    finalValue: metrics.finalValue,
+    tieBreakScore: metrics.eligible ? metrics.finalValue + (ROUND2_PROJECT.budgetLimit - metrics.totalCost) / 10000 : 0,
+    budgetUsage: metrics.budgetUsage,
+    capacityFeasible: metrics.capacityFeasible,
+    budgetFeasible: metrics.budgetFeasible,
+    supportFeasible: metrics.supportFeasible,
+    productivityFeasible: metrics.productivityFeasible,
+    safetyFeasible: metrics.safetyFeasible,
+    effortFeasible: metrics.effortFeasible,
+    eligible: metrics.eligible,
+  };
+}
+
 function getOperationalMode(robotCapacityShare) {
   if (robotCapacityShare < 0.35) {
     return ROUND2_STRATEGIES.find((strategy) => strategy.id === "human-led");
@@ -829,6 +1352,7 @@ function getOperationalMode(robotCapacityShare) {
 }
 
 function setRound2Quantity(resourceId, rawValue) {
+  if (!isRound2Unlocked() || isRound2Locked()) return;
   const resource = ROUND2_RESOURCES.find((item) => item.id === resourceId);
   if (!resource) return;
 
@@ -859,6 +1383,7 @@ function getRound2Quantity(resourceId) {
 }
 
 function setQuantity(resourceId, rawValue, group) {
+  if (!getActiveTeam() || isRound1Locked()) return;
   const current = getQuantity(resourceId);
   const value = Math.max(0, Math.round(Number.isFinite(rawValue) ? rawValue : 0));
   const groupTotalWithoutCurrent = RESOURCES.filter((resource) => resource.group === group && resource.id !== resourceId).reduce(

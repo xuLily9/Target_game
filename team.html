@@ -107,6 +107,13 @@
         background: var(--panel-strong);
       }
 
+      .created-team-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
       @media (max-width: 720px) {
         .role-grid {
           grid-template-columns: 1fr;
@@ -123,29 +130,29 @@
         </div>
 
         <p class="microcopy">
-          Create a team first. Team names are entered freely because the workshop may have any number of teams.
+          Create or select a numeric Team ID first. Each team will submit Round 1 and Round 2 once; final submissions are locked.
         </p>
 
         <form id="team-form" class="team-setup-form">
           <label>
-            Team Name
-            <input id="team-name" type="text" placeholder="Enter your team name" required />
+            Team ID
+            <input id="team-id" type="number" min="1" step="1" placeholder="1" required />
           </label>
 
           <div class="role-grid">
             <label>
               Architecture Lead
-              <input id="architecture-lead" type="text" placeholder="Name" required />
+              <input id="architecture-lead" type="text" placeholder="Optional name" />
             </label>
 
             <label>
               Robot Engineer
-              <input id="robot-engineer" type="text" placeholder="Name" required />
+              <input id="robot-engineer" type="text" placeholder="Optional name" />
             </label>
 
             <label>
               Cost Manager
-              <input id="cost-manager" type="text" placeholder="Name" required />
+              <input id="cost-manager" type="text" placeholder="Optional name" />
             </label>
           </div>
 
@@ -155,8 +162,8 @@
           </label>
 
           <div class="team-setup-actions">
-            <button class="button primary" type="submit">Start Game</button>
-            <button id="new-team" class="button ghost" type="button">New Blank Team</button>
+            <button class="button primary" type="submit">Start Planning</button>
+            <button id="new-team" class="button ghost" type="button">Next New Team ID</button>
             <a class="button ghost" href="./index.html">Return to Game</a>
           </div>
         </form>
@@ -167,11 +174,12 @@
     </main>
 
     <script>
-      const TEAM_STORAGE_KEY = "construction-site-team-v1";
-      const TEAM_LIST_STORAGE_KEY = "construction-site-teams-v1";
+      const WORKSHOP_TEAMS_KEY = "construction-workshop-teams-v3";
+      const ACTIVE_TEAM_ID_KEY = "construction-workshop-active-team-id-v3";
+      const SESSION_TEAM_ID_KEY = "construction-workshop-session-team-id-v3";
 
       const form = document.getElementById("team-form");
-      const teamNameInput = document.getElementById("team-name");
+      const teamIdInput = document.getElementById("team-id");
       const architectureLeadInput = document.getElementById("architecture-lead");
       const robotEngineerInput = document.getElementById("robot-engineer");
       const costManagerInput = document.getElementById("cost-manager");
@@ -189,11 +197,17 @@
         }
       }
 
-      function generateTeamId() {
-        if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
-          return crypto.randomUUID();
-        }
-        return `team-${Date.now()}-${Math.floor(Math.random() * 10000)}`;
+      function saveTeams(teams) {
+        localStorage.setItem(WORKSHOP_TEAMS_KEY, JSON.stringify(teams));
+      }
+
+      function getTeams() {
+        return loadJSON(WORKSHOP_TEAMS_KEY, []);
+      }
+
+      function getNextTeamId() {
+        const maxId = getTeams().reduce((max, team) => Math.max(max, Number(team.teamId) || 0), 0);
+        return String(maxId + 1);
       }
 
       function collectTeamInfo(existing = {}) {
@@ -203,38 +217,47 @@
         return {
           ...existing,
           sessionId: sessionInput.value.trim(),
-          teamName: teamNameInput.value.trim(),
+          teamId: String(Number(teamIdInput.value)),
+          teamName: `Team ${Number(teamIdInput.value)}`,
           architectureLead,
           robotEngineer,
           costManager,
           participants: [architectureLead, robotEngineer, costManager].filter(Boolean).join(", "),
-          teamId: existing.teamId || generateTeamId(),
-          finalSubmitted: existing.finalSubmitted || false,
+          createdAt: existing.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
         };
       }
 
       function fillExistingTeam() {
-        const saved = loadJSON(TEAM_STORAGE_KEY, null);
+        const activeTeamId = localStorage.getItem(ACTIVE_TEAM_ID_KEY);
+        const saved = getTeams().find((team) => String(team.teamId) === String(activeTeamId));
         if (!saved) return;
-        teamNameInput.value = saved.teamName || "";
+        teamIdInput.value = saved.teamId || "";
         architectureLeadInput.value = saved.architectureLead || "";
         robotEngineerInput.value = saved.robotEngineer || "";
         costManagerInput.value = saved.costManager || "";
         sessionInput.value = saved.sessionId || "";
-        if (saved.teamName) {
-          feedbackEl.innerHTML = `<div class="role-pill">Current saved team: ${saved.teamName}</div>`;
+        if (saved.teamId) {
+          feedbackEl.innerHTML = `<div class="role-pill">Current active team: Team ${saved.teamId}</div>`;
         }
       }
 
       function saveTeam(teamInfo) {
-        localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(teamInfo));
-        const teams = loadJSON(TEAM_LIST_STORAGE_KEY, []);
-        const nextTeams = [teamInfo, ...teams.filter((team) => team.teamId !== teamInfo.teamId)];
-        localStorage.setItem(TEAM_LIST_STORAGE_KEY, JSON.stringify(nextTeams));
+        const teams = getTeams();
+        const nextTeams = [teamInfo, ...teams.filter((team) => String(team.teamId) !== String(teamInfo.teamId))].sort(
+          (a, b) => Number(a.teamId) - Number(b.teamId)
+        );
+        saveTeams(nextTeams);
+        localStorage.setItem(ACTIVE_TEAM_ID_KEY, String(teamInfo.teamId));
+        try {
+          sessionStorage.setItem(SESSION_TEAM_ID_KEY, String(teamInfo.teamId));
+        } catch {
+          // URL links still identify team pages if session storage is unavailable.
+        }
       }
 
       function renderCreatedTeams() {
-        const teams = loadJSON(TEAM_LIST_STORAGE_KEY, []);
+        const teams = getTeams();
         if (!teams.length) {
           createdTeamsEl.innerHTML = "";
           return;
@@ -247,10 +270,14 @@
                 (team) => `
                   <div class="created-team-row">
                     <div>
-                      <strong>${team.teamName}</strong>
+                      <strong>Team ${team.teamId}</strong>
                       <div class="microcopy">${team.architectureLead || "-"} / ${team.robotEngineer || "-"} / ${team.costManager || "-"}</div>
+                      <div class="microcopy">${getTeamProgress(team)}</div>
                     </div>
-                    <button class="button ghost" data-team-id="${team.teamId}" type="button">Use</button>
+                    <div class="created-team-actions">
+                      <a class="button ghost" href="${getTeamGameUrl(team.teamId)}" target="_blank" rel="noopener">Open Page</a>
+                      <button class="button ghost" data-team-id="${team.teamId}" type="button">Use Here</button>
+                    </div>
                   </div>
                 `
               )
@@ -259,39 +286,57 @@
         `;
         createdTeamsEl.querySelectorAll("[data-team-id]").forEach((button) => {
           button.addEventListener("click", () => {
-            const selected = teams.find((team) => team.teamId === button.dataset.teamId);
+            const selected = teams.find((team) => String(team.teamId) === String(button.dataset.teamId));
             if (!selected) return;
-            localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(selected));
-            window.location.href = "./index.html";
+            localStorage.setItem(ACTIVE_TEAM_ID_KEY, String(selected.teamId));
+            try {
+              sessionStorage.setItem(SESSION_TEAM_ID_KEY, String(selected.teamId));
+            } catch {
+              // Ignore; URL below carries the team id.
+            }
+            window.location.href = getTeamGameUrl(selected.teamId);
           });
         });
       }
 
+      function getTeamGameUrl(teamId) {
+        return `./index.html?team=${encodeURIComponent(teamId)}#planning-workspace`;
+      }
+
+      function getTeamProgress(team) {
+        if (team.round2Submission) return "Round 1 submitted | Round 2 submitted";
+        if (team.round1Submission) return "Round 1 submitted | Round 2 open";
+        return "No submissions yet";
+      }
+
       form.addEventListener("submit", (event) => {
         event.preventDefault();
-        const existing = loadJSON(TEAM_STORAGE_KEY, {});
-        const teamInfo = collectTeamInfo(existing.teamName === teamNameInput.value.trim() ? existing : {});
+        const numericTeamId = Number(teamIdInput.value);
 
-        if (!teamInfo.teamName || !teamInfo.architectureLead || !teamInfo.robotEngineer || !teamInfo.costManager) {
-          feedbackEl.innerHTML = `<div class="warning-pill">Please fill Team Name, Architecture Lead, Robot Engineer, and Cost Manager.</div>`;
+        if (!Number.isInteger(numericTeamId) || numericTeamId <= 0) {
+          feedbackEl.innerHTML = `<div class="warning-pill">Please enter a positive numeric Team ID.</div>`;
           return;
         }
 
+        const existing = getTeams().find((team) => String(team.teamId) === String(numericTeamId)) || {};
+        const teamInfo = collectTeamInfo(existing);
         saveTeam(teamInfo);
-        window.location.href = "./index.html";
+        window.location.href = getTeamGameUrl(teamInfo.teamId);
       });
 
       newTeamButton.addEventListener("click", () => {
-        localStorage.removeItem(TEAM_STORAGE_KEY);
-        teamNameInput.value = "";
+        teamIdInput.value = getNextTeamId();
         architectureLeadInput.value = "";
         robotEngineerInput.value = "";
         costManagerInput.value = "";
         sessionInput.value = "";
         feedbackEl.innerHTML = "";
-        teamNameInput.focus();
+        teamIdInput.focus();
       });
 
+      if (!teamIdInput.value) {
+        teamIdInput.value = getNextTeamId();
+      }
       fillExistingTeam();
       renderCreatedTeams();
     </script>

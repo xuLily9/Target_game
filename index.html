@@ -27,23 +27,13 @@
             </div>
           </div>
 
-          <aside class="mission-brief" aria-label="Mission brief">
-            <div class="brief-point">
-              <span class="brief-icon">01</span>
-              <p>Your team has been hired to plan material delivery operations for a new high-rise office building.</p>
-            </div>
-            <div class="brief-point">
-              <span class="brief-icon">02</span>
-              <p>Construction materials must move from a temporary storage area to multiple work zones.</p>
-            </div>
-            <div class="brief-point">
-              <span class="brief-icon">03</span>
-              <p>The client wants the work completed quickly, safely, and within budget.</p>
-            </div>
-            <div class="brief-point">
-              <span class="brief-icon">04</span>
-              <p>Your plan can combine human workers, forklifts, delivery robots, and quadruped robots.</p>
-            </div>
+          <aside class="material-info" aria-label="Material examples">
+            <h2>Material Examples</h2>
+            <div class="material-row"><span class="material-beams"></span><strong>Steel Beams</strong></div>
+            <div class="material-row"><span class="material-blocks"></span><strong>Concrete Blocks</strong></div>
+            <div class="material-row"><span class="material-pipes"></span><strong>Pipes</strong></div>
+            <div class="material-row"><span class="material-bags"></span><strong>Cement Bags</strong></div>
+            <div class="material-row"><span class="material-glass"></span><strong>Glass Panels</strong></div>
           </aside>
 
           <div class="map-label storage-label">Storage Area</div>
@@ -69,15 +59,6 @@
               <span class="info-symbol credit-symbol" aria-hidden="true"></span>
               <div><span>Budget Limit</span><strong>200 Credits</strong></div>
             </div>
-          </aside>
-
-          <aside class="material-info" aria-label="Material examples">
-            <h2>Material Examples</h2>
-            <div class="material-row"><span class="material-beams"></span><strong>Steel Beams</strong></div>
-            <div class="material-row"><span class="material-blocks"></span><strong>Concrete Blocks</strong></div>
-            <div class="material-row"><span class="material-pipes"></span><strong>Pipes</strong></div>
-            <div class="material-row"><span class="material-bags"></span><strong>Cement Bags</strong></div>
-            <div class="material-row"><span class="material-glass"></span><strong>Glass Panels</strong></div>
           </aside>
 
           <div class="objective-ribbon">
@@ -109,10 +90,11 @@
             <div class="plan-icon" aria-hidden="true"></div>
             <strong>Plan &amp; Simulate</strong>
             <p>Build your plan, simulate operations, and achieve your mission goals.</p>
-            <a class="start-button" href="#planning-workspace">Start Planning</a>
+            <div class="active-team-card" id="active-team-card"></div>
+            <a class="start-button" id="start-planning" href="./team.html">Start Planning</a>
             <div class="scenario-actions" aria-label="Scenario actions">
-              <a class="button ghost" href="./team.html">Team Setup</a>
-              <button class="button ghost" id="reset-scenario" type="button">Reset Plans</button>
+              <a class="button ghost" href="./team.html">Create / Switch Team</a>
+              <button class="button ghost" id="reset-scenario" type="button">Reset Draft</button>
             </div>
           </div>
         </div>
@@ -120,6 +102,8 @@
     </div>
 
     <main class="round-app" id="planning-workspace">
+      <section class="workshop-team-banner" id="workshop-team-banner"></section>
+
       <header class="round-header">
         <div class="round-badge">
           <span>Round</span>
@@ -246,6 +230,8 @@
       </section>
     </main>
 
+    <section class="submission-board" id="round1-summary-board" aria-label="Round 1 submission summary"></section>
+
     <main class="round2-app" id="round-2-workspace">
       <header class="round2-header">
         <div class="round2-badge">
@@ -358,6 +344,8 @@
         </aside>
       </section>
     </main>
+
+    <section class="submission-board round2-board" id="round2-summary-board" aria-label="Round 2 submission summary"></section>
 
     <script src="./app.js"></script>
   </body>
