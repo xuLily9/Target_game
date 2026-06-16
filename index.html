@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="./styles.css" />
@@ -112,82 +112,133 @@
             <a class="start-button" href="#planning-workspace">Start Planning</a>
             <div class="scenario-actions" aria-label="Scenario actions">
               <a class="button ghost" href="./team.html">Team Setup</a>
-              <button class="button ghost" id="reset-all" type="button">Reset Plans</button>
+              <button class="button ghost" id="reset-scenario" type="button">Reset Plans</button>
             </div>
           </div>
         </div>
       </header>
-
-      <main class="workspace" id="planning-workspace">
-        <section class="panel project-brief">
-          <div>
-            <p class="panel-kicker">Project Requirements</p>
-            <h2>Move 100 units from temporary storage to work zones in 5 days.</h2>
-          </div>
-          <div class="brief-grid">
-            <div class="brief-item"><span>Total Demand</span><strong>100 units</strong></div>
-            <div class="brief-item"><span>Completion Time</span><strong>5 days</strong></div>
-            <div class="brief-item"><span>Daily Capacity Target</span><strong>20 units/day</strong></div>
-            <div class="brief-item"><span>Budget Limit</span><strong>200 credits</strong></div>
-          </div>
-        </section>
-
-        <section class="team-tabs panel" id="team-tabs" aria-label="Teams"></section>
-
-        <section class="dashboard-grid">
-          <section class="panel controls-panel">
-            <div class="panel-head">
-              <p class="panel-kicker">Resource Plan</p>
-              <h2 id="active-team-title">Team A</h2>
-            </div>
-            <div id="strategy-controls" class="strategy-controls"></div>
-            <div id="resource-controls" class="resource-controls"></div>
-          </section>
-
-          <section class="panel site-panel">
-            <div class="panel-head">
-              <p class="panel-kicker">Site Flow Visual</p>
-              <h2>Temporary Storage to Work Zones</h2>
-            </div>
-            <div id="site-visual" class="site-visual"></div>
-          </section>
-        </section>
-
-        <section class="panel kpi-panel">
-          <div class="panel-head">
-            <p class="panel-kicker">Simulation Dashboard</p>
-            <h2>Live Metrics</h2>
-          </div>
-          <div id="kpi-grid" class="kpi-grid"></div>
-        </section>
-
-        <section class="dashboard-grid">
-          <section class="panel progress-panel">
-            <div class="panel-head">
-              <p class="panel-kicker">Targets</p>
-              <h2>Progress Against Constraints</h2>
-            </div>
-            <div id="progress-list" class="progress-list"></div>
-          </section>
-
-          <section class="panel checks-panel">
-            <div class="panel-head">
-              <p class="panel-kicker">Pass / Fail</p>
-              <h2>Round Checks and Strategy Fit</h2>
-            </div>
-            <div id="checks-list" class="checks-list"></div>
-          </section>
-        </section>
-
-        <section class="panel comparison-panel">
-          <div class="panel-head">
-            <p class="panel-kicker">Team Comparison</p>
-            <h2>Round 1 and Round 2 Winners</h2>
-          </div>
-          <div id="comparison-summary" class="comparison-summary"></div>
-        </section>
-      </main>
     </div>
+
+    <main class="round-app" id="planning-workspace">
+      <header class="round-header">
+        <div class="round-badge">
+          <span>Round</span>
+          <strong>1</strong>
+        </div>
+        <div class="round-title">
+          <h1>Round 1 - Make Your Decisions</h1>
+          <p>Plan your resources to meet the daily capacity target within budget.</p>
+        </div>
+
+        <section class="header-metric capacity-target" aria-label="Capacity target">
+          <span class="metric-icon gauge-icon" aria-hidden="true"></span>
+          <div>
+            <small>Capacity Target</small>
+            <strong>20 Units / Day</strong>
+            <p>Total capacity you need to achieve</p>
+          </div>
+        </section>
+
+        <section class="header-metric budget-limit" aria-label="Budget limit">
+          <span class="metric-icon coin-icon" aria-hidden="true"></span>
+          <div>
+            <small>Budget Limit</small>
+            <strong>200 Credits</strong>
+            <p>Total budget for this round</p>
+          </div>
+        </section>
+
+        <section class="mission-progress" aria-label="Mission progress">
+          <small>Mission Progress</small>
+          <div class="progress-steps">
+            <span class="step active">1</span>
+            <i></i>
+            <span class="step">2</span>
+          </div>
+          <div class="step-labels">
+            <strong>Round 1</strong>
+            <span>Round 2</span>
+          </div>
+        </section>
+      </header>
+
+      <section class="decision-layout">
+        <section class="resource-panel" aria-label="Allocate your resources">
+          <div class="section-heading">
+            <span class="section-step">1</span>
+            <div>
+              <h2>Allocate Your Resources</h2>
+              <p>Choose the right mix of human workers and robots to achieve the target capacity.</p>
+            </div>
+          </div>
+
+          <section class="resource-group">
+            <div class="group-heading">
+              <div>
+                <span class="group-icon human-icon" aria-hidden="true"></span>
+                <h3>Human Workers</h3>
+              </div>
+              <p>Max Available: <strong id="human-limit-label">20 Workers</strong></p>
+            </div>
+            <div class="resource-grid" id="human-resource-grid"></div>
+          </section>
+
+          <section class="resource-group">
+            <div class="group-heading">
+              <div>
+                <span class="group-icon robot-icon" aria-hidden="true"></span>
+                <h3>Robots</h3>
+              </div>
+              <p>Max Available: <strong id="robot-limit-label">12 Robots / Fleet</strong></p>
+            </div>
+            <div class="resource-grid" id="robot-resource-grid"></div>
+          </section>
+
+          <div class="tip-row">
+            <span class="tip-icon" aria-hidden="true"></span>
+            <strong>Tip</strong>
+            <p>Consider the site conditions and material demand to choose the best mix of resources.</p>
+          </div>
+        </section>
+
+        <aside class="summary-panel" aria-label="Your selection summary">
+          <div class="summary-heading">
+            <span class="summary-icon" aria-hidden="true"></span>
+            <h2>Your Selection Summary</h2>
+          </div>
+
+          <div id="selection-summary"></div>
+
+          <section class="result-card total-capacity" id="capacity-card"></section>
+          <section class="result-card total-cost" id="cost-card"></section>
+          <section class="support-card" id="support-card"></section>
+
+          <div class="note-card">
+            <span class="note-icon">i</span>
+            <div>
+              <strong>Note</strong>
+              <p>Round 1 calculations follow the Final_HRC workbook logic: capacity target, budget limit, project duration, and robot support feasibility are checked live.</p>
+            </div>
+          </div>
+
+          <div class="action-row">
+            <button class="button reset-button" id="reset-round" type="button">
+              <span aria-hidden="true">C</span>
+              Reset
+            </button>
+            <button class="button confirm-button" id="confirm-round" type="button">
+              <span>
+                Confirm &amp; Calculate
+                <small>Check Round 1 feasibility</small>
+              </span>
+              <b aria-hidden="true">+</b>
+            </button>
+          </div>
+
+          <div class="confirmation-message" id="confirmation-message" role="status"></div>
+        </aside>
+      </section>
+    </main>
 
     <script src="./app.js"></script>
   </body>
