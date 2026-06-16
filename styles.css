@@ -3116,17 +3116,18 @@ body {
 
 .round2-layout {
   display: grid;
-  grid-template-columns: minmax(760px, 1fr) 460px;
-  gap: 12px;
+  grid-template-columns: minmax(780px, 1fr) minmax(400px, 440px);
+  gap: 16px;
+  align-items: start;
 }
 
 .round2-main {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .round2-panel {
-  padding: 12px;
+  padding: 14px;
 }
 
 .round2-step-title {
@@ -3195,11 +3196,11 @@ body {
 
 .strategy-card {
   position: relative;
-  min-height: 280px;
+  min-height: 252px;
   overflow: hidden;
   border: 1px solid rgba(95, 164, 224, 0.4);
   border-radius: 8px;
-  padding: 14px;
+  padding: 12px;
   background: linear-gradient(160deg, rgba(7, 34, 55, 0.98), rgba(6, 20, 35, 0.98));
   cursor: pointer;
 }
@@ -3236,8 +3237,8 @@ body {
 .strategy-card p {
   position: relative;
   z-index: 1;
-  min-height: 42px;
-  margin: 8px auto 12px;
+  min-height: 38px;
+  margin: 6px auto 10px;
   max-width: 230px;
   color: #d5e1ec;
   font-size: 0.86rem;
@@ -3261,8 +3262,8 @@ body {
 }
 
 .strategy-visual {
-  height: 110px;
-  margin: 6px 0 12px;
+  height: 96px;
+  margin: 4px 0 10px;
   border-radius: 5px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   background:
@@ -3296,7 +3297,7 @@ body {
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.12);
-  padding-top: 10px;
+  padding-top: 9px;
 }
 
 .strategy-scores span {
@@ -3334,9 +3335,9 @@ body {
 .r2-resource-group {
   display: grid;
   grid-template-columns: 188px minmax(0, 1fr);
-  gap: 10px;
+  gap: 12px;
   align-items: stretch;
-  padding: 10px;
+  padding: 12px;
   border: 1px solid rgba(95, 164, 224, 0.22);
   border-radius: 8px;
   background: linear-gradient(145deg, rgba(5, 25, 42, 0.76), rgba(3, 15, 28, 0.72));
@@ -3392,8 +3393,8 @@ body {
 
 .r2-resource-card {
   display: grid;
-  grid-template-rows: 104px auto auto 1fr auto auto;
-  min-height: 258px;
+  grid-template-rows: 96px auto auto 1fr auto auto;
+  min-height: 242px;
   min-width: 0;
   padding: 12px;
   border: 1px solid rgba(95, 164, 224, 0.32);
@@ -3411,8 +3412,8 @@ body {
 
 .r2-resource-visual {
   position: relative;
-  height: 104px;
-  transform: scale(0.66);
+  height: 96px;
+  transform: scale(0.62);
   transform-origin: center bottom;
 }
 
@@ -3438,7 +3439,7 @@ body {
   display: grid;
   gap: 3px;
   align-self: start;
-  min-height: 60px;
+  min-height: 54px;
   color: #dcecff;
   font-family: "Barlow Condensed", sans-serif;
   font-size: 1rem;
@@ -3592,7 +3593,11 @@ body {
 }
 
 .round2-dashboard {
-  padding: 12px;
+  position: sticky;
+  top: 16px;
+  align-self: start;
+  margin-top: 34px;
+  padding: 14px;
 }
 
 .round2-dashboard > h2,
@@ -3606,19 +3611,19 @@ body {
 
 .dashboard-metric {
   display: grid;
-  grid-template-columns: 58px 1fr;
-  gap: 12px;
-  min-height: 108px;
-  margin-bottom: 10px;
-  padding: 14px;
+  grid-template-columns: 50px 1fr;
+  gap: 10px;
+  min-height: 94px;
+  margin-bottom: 9px;
+  padding: 12px;
   border: 1px solid rgba(95, 164, 224, 0.2);
   border-radius: 8px;
   background: linear-gradient(145deg, rgba(7, 33, 55, 0.9), rgba(5, 18, 34, 0.95));
 }
 
 .dashboard-metric-icon {
-  width: 54px;
-  height: 54px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   background: var(--r2-blue);
   box-shadow: 0 0 20px rgba(50, 156, 255, 0.28);
@@ -3663,7 +3668,7 @@ body {
 .dashboard-metric-heading b {
   color: var(--r2-blue);
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 2rem;
+  font-size: 1.72rem;
   line-height: 1;
   white-space: nowrap;
 }
@@ -3687,7 +3692,7 @@ body {
 .dashboard-bar {
   position: relative;
   height: 8px;
-  margin-top: 18px;
+  margin-top: 14px;
   border-radius: 999px;
   background: rgba(170, 196, 220, 0.14);
 }
@@ -3726,8 +3731,8 @@ body {
 }
 
 .final-value-card {
-  margin-top: 12px;
-  padding: 18px;
+  margin-top: 10px;
+  padding: 16px;
   border: 1px solid rgba(183, 108, 255, 0.48);
   border-radius: 8px;
   background:
@@ -3748,7 +3753,7 @@ body {
   margin-top: 8px;
   color: #f2d6ff;
   font-family: "Barlow Condensed", sans-serif;
-  font-size: 4.2rem;
+  font-size: 3.72rem;
   line-height: 0.95;
   text-shadow: 0 0 18px rgba(183, 108, 255, 0.72);
 }
@@ -3774,9 +3779,9 @@ body {
 
 .round2-actions {
   display: grid;
-  grid-template-columns: 150px 1fr;
+  grid-template-columns: 138px 1fr;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .round2-reset,
@@ -3824,6 +3829,11 @@ body {
 
   .round2-layout {
     grid-template-columns: 1fr;
+  }
+
+  .round2-dashboard {
+    position: static;
+    margin-top: 0;
   }
 
   .r2-resource-group {
@@ -3889,6 +3899,6 @@ body {
   }
 
   .strategy-card {
-    min-height: 250px;
+    min-height: 230px;
   }
 }
