@@ -432,8 +432,8 @@ input {
 }
 
 .storage-label {
-  left: 34px;
-  bottom: 330px;
+  left: 42px;
+  bottom: 246px;
   background: rgba(84, 73, 154, 0.88);
 }
 
@@ -529,6 +529,7 @@ input {
 
 .worker-figure,
 .forklift-figure,
+.fleet-figure,
 .cart-figure,
 .quad-figure {
   position: relative;
@@ -537,6 +538,24 @@ input {
   height: 58px;
   border-radius: 8px;
   background: rgba(7, 27, 44, 0.52);
+}
+
+.worker-figure img,
+.forklift-figure img,
+.fleet-figure img,
+.cart-figure img,
+.quad-figure img {
+  position: absolute;
+  inset: -6px;
+  width: calc(100% + 12px);
+  height: calc(100% + 12px);
+  object-fit: contain;
+  object-position: center bottom;
+}
+
+.image-figure::before,
+.image-figure::after {
+  content: none;
 }
 
 .worker-figure::before {
@@ -2276,6 +2295,15 @@ button {
   position: relative;
   align-self: end;
   height: 156px;
+}
+
+.resource-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: center bottom;
 }
 
 .worker .head {

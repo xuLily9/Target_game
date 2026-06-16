@@ -194,6 +194,15 @@ const ROUND2_RESOURCES = [
   },
 ];
 
+const VISUAL_IMAGE_SOURCES = {
+  "worker skilled": "./assets/worker-skilled.svg",
+  "worker general": "./assets/worker-general.svg",
+  "worker operator": "./assets/worker-support.svg",
+  "robot delivery": "./assets/robot-delivery.svg",
+  "robot quadruped": "./assets/robot-quadruped.svg",
+  "robot fleet": "./assets/robot-fleet.svg",
+};
+
 const state = loadState();
 
 const humanGridEl = document.getElementById("human-resource-grid");
@@ -617,6 +626,10 @@ function renderResourceCards(group, container, metrics) {
 }
 
 function renderVisualParts(visual) {
+  if (VISUAL_IMAGE_SOURCES[visual]) {
+    return `<img class="resource-image" src="${VISUAL_IMAGE_SOURCES[visual]}" alt="" />`;
+  }
+
   if (visual.startsWith("worker")) {
     return `
       <span class="helmet"></span>
