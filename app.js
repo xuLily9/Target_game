@@ -92,6 +92,105 @@ const RESOURCES = [
   },
 ];
 
+const ROUND2_PROJECT = {
+  totalDemand: 100,
+  requiredDailyCapacity: 20,
+  budgetLimit: 200,
+  maxHumanWorkers: 20,
+};
+
+const ROUND2_STRATEGIES = [
+  {
+    id: "robot-led",
+    label: "Robot-Led",
+    description: "Maximise automation and robot capacity.",
+    color: "purple",
+    weights: { productivity: 0.4, safety: 0.3, effort: 0.3 },
+    stars: { productivity: 3, safety: 2, effort: 2 },
+  },
+  {
+    id: "collaborative",
+    label: "Collaborative",
+    description: "Balance humans and robots for safe and efficient delivery.",
+    color: "blue",
+    weights: { productivity: 0.3, safety: 0.4, effort: 0.3 },
+    stars: { productivity: 2, safety: 3, effort: 2 },
+  },
+  {
+    id: "human-led",
+    label: "Human-Led",
+    description: "Leverage human capability and reduce physical strain.",
+    color: "green",
+    weights: { productivity: 0.3, safety: 0.3, effort: 0.4 },
+    stars: { productivity: 2, safety: 2, effort: 3 },
+  },
+];
+
+const ROUND2_RESOURCES = [
+  {
+    id: "materialWorkers",
+    group: "human",
+    label: "Construction Material Workers",
+    shortLabel: "Material Workers",
+    description: "Manual transport capacity for site delivery.",
+    cost: 10,
+    capacity: 1,
+    visual: "worker general",
+    accent: "blue",
+  },
+  {
+    id: "supportWorkers",
+    group: "human",
+    label: "Robot Support Workers",
+    shortLabel: "Robot Support",
+    description: "Dedicated support for robot operations.",
+    cost: 10,
+    capacity: 0,
+    supportCapacity: 1,
+    visual: "worker operator",
+    accent: "cyan",
+  },
+  {
+    id: "deliveryRobots",
+    group: "robot",
+    label: "Delivery Robots",
+    shortLabel: "Delivery Robots",
+    description: "0.5 support workers per robot.",
+    cost: 20,
+    capacity: 3,
+    supportLoad: 0.5,
+    effects: { productivity: 5, safety: 5, effort: 8 },
+    visual: "robot delivery",
+    accent: "green",
+  },
+  {
+    id: "quadrupedRobots",
+    group: "robot",
+    label: "Quadruped Robots",
+    shortLabel: "Quadruped Robots",
+    description: "1 support worker per robot.",
+    cost: 35,
+    capacity: 5,
+    supportLoad: 1,
+    effects: { productivity: 10, safety: 10, effort: 12 },
+    visual: "robot quadruped",
+    accent: "blue",
+  },
+  {
+    id: "multiRobotFleets",
+    group: "robot",
+    label: "Multi-Robot Fleets",
+    shortLabel: "Multi-Robot Fleets",
+    description: "3 support workers per fleet.",
+    cost: 60,
+    capacity: 8,
+    supportLoad: 3,
+    effects: { productivity: 18, safety: 8, effort: 18 },
+    visual: "robot fleet",
+    accent: "purple",
+  },
+];
+
 const state = loadState();
 
 const humanGridEl = document.getElementById("human-resource-grid");
@@ -104,9 +203,19 @@ const confirmationMessageEl = document.getElementById("confirmation-message");
 const resetButton = document.getElementById("reset-round");
 const scenarioResetButton = document.getElementById("reset-scenario");
 const confirmButton = document.getElementById("confirm-round");
+const round2StrategyGridEl = document.getElementById("round2-strategy-grid");
+const round2ResourceGridEl = document.getElementById("round2-resource-grid");
+const round2ConstraintsEl = document.getElementById("round2-constraints");
+const round2AlignmentEl = document.getElementById("round2-alignment");
+const round2DashboardMetricsEl = document.getElementById("round2-dashboard-metrics");
+const round2FinalValueEl = document.getElementById("round2-final-value");
+const round2ConfirmationEl = document.getElementById("round2-confirmation");
+const resetRound2Button = document.getElementById("reset-round2");
+const confirmRound2Button = document.getElementById("confirm-round2");
 
 resetButton.addEventListener("click", resetRound);
 scenarioResetButton?.addEventListener("click", resetRound);
+resetRound2Button?.addEventListener("click", resetRound2);
 
 function resetRound() {
   state.quantities = createEmptyQuantities();
@@ -121,10 +230,33 @@ confirmButton.addEventListener("click", () => {
   render();
 });
 
+confirmRound2Button?.addEventListener("click", () => {
+  state.round2.confirmed = true;
+  persistState();
+  render();
+});
+
 render();
 
 function createEmptyQuantities() {
   return Object.fromEntries(RESOURCES.map((resource) => [resource.id, 0]));
+}
+
+function createEmptyRound2Quantities() {
+  return Object.fromEntries(ROUND2_RESOURCES.map((resource) => [resource.id, 0]));
+}
+
+function createDefaultRound2State() {
+  return {
+    strategy: "robot-led",
+    quantities: {
+      ...createEmptyRound2Quantities(),
+      supportWorkers: 4,
+      deliveryRobots: 4,
+      quadrupedRobots: 2,
+    },
+    confirmed: false,
+  };
 }
 
 function loadState() {
@@ -142,11 +274,21 @@ function loadState() {
         ...savedQuantities,
       },
       confirmed: Boolean(saved?.confirmed),
+      round2: {
+        ...createDefaultRound2State(),
+        ...(saved?.round2 || {}),
+        quantities: {
+          ...createEmptyRound2Quantities(),
+          ...(saved?.round2?.quantities || createDefaultRound2State().quantities),
+        },
+        confirmed: Boolean(saved?.round2?.confirmed),
+      },
     };
   } catch {
     return {
       quantities: createEmptyQuantities(),
       confirmed: false,
+      round2: createDefaultRound2State(),
     };
   }
 }
@@ -162,6 +304,7 @@ function render() {
   renderSummary(metrics);
   renderResultCards(metrics);
   renderConfirmation(metrics);
+  renderRound2();
 }
 
 function renderResourceCards(group, container, metrics) {
@@ -388,6 +531,331 @@ function evaluateRound() {
     scheduleFeasible,
     round1Feasible: capacityFeasible && budgetFeasible && supportFeasible && scheduleFeasible,
   };
+}
+
+function resetRound2() {
+  state.round2 = createDefaultRound2State();
+  persistState();
+  render();
+}
+
+function renderRound2() {
+  if (!round2StrategyGridEl || !round2ResourceGridEl) return;
+
+  const metrics = evaluateRound2();
+  renderRound2Strategies();
+  renderRound2Resources(metrics);
+  renderRound2Dashboard(metrics);
+  renderRound2Constraints(metrics);
+  renderRound2Alignment(metrics);
+  renderRound2FinalValue(metrics);
+  renderRound2Confirmation(metrics);
+}
+
+function renderRound2Strategies() {
+  round2StrategyGridEl.innerHTML = ROUND2_STRATEGIES.map((strategy) => {
+    const selected = state.round2.strategy === strategy.id;
+    return `
+      <article class="strategy-card ${strategy.color} ${selected ? "selected" : ""}" data-r2-strategy="${strategy.id}">
+        <div class="strategy-check" aria-hidden="true">${selected ? "✓" : ""}</div>
+        <div class="strategy-visual ${strategy.id}" aria-hidden="true"></div>
+        <h4>${strategy.label}</h4>
+        <p>${strategy.description}</p>
+        <div class="strategy-scores">
+          ${renderStrategyStars("Productivity", strategy.stars.productivity)}
+          ${renderStrategyStars("Operational Safety", strategy.stars.safety)}
+          ${renderStrategyStars("Manual Effort Reduction", strategy.stars.effort)}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  round2StrategyGridEl.querySelectorAll("[data-r2-strategy]").forEach((card) => {
+    card.addEventListener("click", () => {
+      state.round2.strategy = card.dataset.r2Strategy;
+      state.round2.confirmed = false;
+      persistState();
+      render();
+    });
+  });
+}
+
+function renderStrategyStars(label, count) {
+  return `
+    <span>
+      <small>${label}</small>
+      <b>${"★".repeat(count)}</b>
+    </span>
+  `;
+}
+
+function renderRound2Resources(metrics) {
+  const groups = [
+    {
+      label: "Human Resources",
+      helper: "Workers are separated into transport capacity and robot support.",
+      resources: ROUND2_RESOURCES.filter((resource) => resource.group === "human"),
+    },
+    {
+      label: "Robots / Fleets",
+      helper: "Robot choices add delivery capacity and performance effects.",
+      resources: ROUND2_RESOURCES.filter((resource) => resource.group === "robot"),
+    },
+  ];
+
+  round2ResourceGridEl.innerHTML = groups.map((group) => `
+    <section class="r2-resource-group ${group.resources[0]?.group || ""}">
+      <div class="r2-resource-group-heading">
+        <h4>${group.label}</h4>
+        <p>${group.helper}</p>
+      </div>
+      <div class="r2-resource-card-grid">
+        ${group.resources.map((resource) => renderRound2ResourceCard(resource, metrics)).join("")}
+      </div>
+    </section>
+  `).join("");
+
+  round2ResourceGridEl.querySelectorAll("[data-r2-resource-id]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const resourceId = button.dataset.r2ResourceId;
+      const delta = button.dataset.action === "increment" ? 1 : -1;
+      setRound2Quantity(resourceId, getRound2Quantity(resourceId) + delta);
+    });
+  });
+
+  round2ResourceGridEl.querySelectorAll("[data-r2-resource-input]").forEach((input) => {
+    input.addEventListener("input", () => {
+      setRound2Quantity(input.dataset.r2ResourceInput, Number(input.value));
+    });
+  });
+}
+
+function renderRound2ResourceCard(resource, metrics) {
+    const value = getRound2Quantity(resource.id);
+    const isHuman = resource.group === "human";
+    const humanTotalWithoutCurrent = metrics.humanCount - (isHuman ? value : 0);
+    const maxForResource = isHuman ? Math.max(0, ROUND2_PROJECT.maxHumanWorkers - humanTotalWithoutCurrent) : 99;
+    const canIncrement = value < maxForResource;
+
+    return `
+      <article class="r2-resource-card ${resource.accent}">
+        <div class="r2-resource-visual ${resource.visual}" aria-hidden="true">
+          ${renderVisualParts(resource.visual)}
+        </div>
+        <h4>${resource.label}</h4>
+        <p>${resource.description}</p>
+        ${renderRound2ResourceEffects(resource)}
+        <div class="quantity-row">
+          <span>Quantity</span>
+          <div class="stepper r2-stepper">
+            <button data-r2-resource-id="${resource.id}" data-action="decrement" type="button" aria-label="Decrease ${resource.label}" ${value <= 0 ? "disabled" : ""}>-</button>
+            <input data-r2-resource-input="${resource.id}" type="number" min="0" max="${maxForResource}" value="${value}" aria-label="${resource.label} quantity" />
+            <button data-r2-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}" ${canIncrement ? "" : "disabled"}>+</button>
+          </div>
+        </div>
+        <div class="r2-cost">Cost: ${resource.cost} Credits / ${resource.group === "human" ? "Worker" : resource.id === "multiRobotFleets" ? "Fleet" : "Robot"} / Day</div>
+      </article>
+    `;
+}
+
+function renderRound2ResourceEffects(resource) {
+  if (!resource.effects) {
+    const contribution = resource.supportCapacity ? `${resource.supportCapacity} support unit` : `${resource.capacity} load / day`;
+    return `<div class="r2-effects"><span>${contribution}</span></div>`;
+  }
+
+  return `
+    <div class="r2-effects">
+      <span>Productivity +${resource.effects.productivity}</span>
+      <span>Safety +${resource.effects.safety}</span>
+      <span>Effort +${resource.effects.effort}</span>
+    </div>
+  `;
+}
+
+function renderRound2Dashboard(metrics) {
+  round2DashboardMetricsEl.innerHTML = [
+    renderDashboardMetric("Net Daily Capacity", `${formatNumber(metrics.netDailyCapacity)} Loads / Day`, "Target expected delivery capacity", metrics.capacityFeasible, metrics.netDailyCapacity, ROUND2_PROJECT.requiredDailyCapacity, "blue"),
+    renderDashboardMetric("Productivity", `${formatNumber(metrics.productivity)} /100`, "Weighted Score", metrics.productivityFeasible, metrics.productivity, 70, "purple"),
+    renderDashboardMetric("Operational Safety", `${formatNumber(metrics.safety)} /100`, "Weighted Score", metrics.safetyFeasible, metrics.safety, 70, "blue"),
+    renderDashboardMetric("Manual Effort Reduction", `${formatNumber(metrics.effort)} /100`, "Weighted Score", metrics.effortFeasible, metrics.effort, 70, "green"),
+    renderDashboardMetric("Total Cost", `${formatNumber(metrics.totalCost)} Credits`, `Budget Usage: ${formatNumber(metrics.budgetUsage)}%`, metrics.budgetFeasible, metrics.totalCost, ROUND2_PROJECT.budgetLimit, "orange"),
+  ].join("");
+}
+
+function renderDashboardMetric(label, value, helper, passed, current, target, color) {
+  const denominator = label === "Total Cost" ? target : 100;
+  const marker = label === "Net Daily Capacity" ? target : label === "Total Cost" ? target : 70;
+  const fillPercent = Math.min(100, denominator > 0 ? (current / denominator) * 100 : 0);
+  const markerPercent = Math.min(100, denominator > 0 ? (marker / denominator) * 100 : 0);
+  return `
+    <article class="dashboard-metric ${color} ${passed ? "pass" : "fail"}">
+      <div class="dashboard-metric-icon" aria-hidden="true"></div>
+      <div class="dashboard-metric-body">
+        <div class="dashboard-metric-heading">
+          <span><strong>${label}</strong><small>${helper}</small></span>
+          <b>${value}</b>
+        </div>
+        <div class="dashboard-bar">
+          <span style="width:${fillPercent}%"></span>
+          <i style="left:${markerPercent}%">${formatNumber(marker)}</i>
+        </div>
+      </div>
+    </article>
+  `;
+}
+
+function renderRound2Constraints(metrics) {
+  const constraints = [
+    ["Capacity", `≥ ${ROUND2_PROJECT.requiredDailyCapacity} Loads/Day`, formatNumber(metrics.netDailyCapacity), metrics.capacityFeasible],
+    ["Support", `≥ ${formatNumber(metrics.requiredSupport)} Support`, formatNumber(metrics.supportWorkerCapacity), metrics.supportFeasible],
+    ["Budget", `≤ ${ROUND2_PROJECT.budgetLimit} Credits`, formatNumber(metrics.totalCost), metrics.budgetFeasible],
+    ["Productivity", "≥ 70", formatNumber(metrics.productivity), metrics.productivityFeasible],
+    ["Operational Safety", "≥ 70", formatNumber(metrics.safety), metrics.safetyFeasible],
+    ["Manual Effort Reduction", "≥ 70", formatNumber(metrics.effort), metrics.effortFeasible],
+  ];
+
+  round2ConstraintsEl.innerHTML = constraints.map(([label, rule, value, passed]) => `
+    <article class="constraint-card ${passed ? "pass" : "fail"}">
+      <small>${label}</small>
+      <span>${rule}</span>
+      <strong>${value}</strong>
+      <b>${passed ? "✓" : "!"}</b>
+    </article>
+  `).join("");
+}
+
+function renderRound2Alignment(metrics) {
+  round2AlignmentEl.className = `alignment-card ${metrics.aligned ? "pass" : "fail"}`;
+  round2AlignmentEl.innerHTML = `
+    <div class="alignment-icon" aria-hidden="true"></div>
+    <div>
+      <strong>${metrics.aligned ? "Good Alignment" : "Strategy Mismatch"}</strong>
+      <p>Selected: ${metrics.selectedStrategy.label}. Operational mode: ${metrics.operationalMode.label}.</p>
+    </div>
+    <b>${metrics.aligned ? "100%" : "-10"}</b>
+  `;
+}
+
+function renderRound2FinalValue(metrics) {
+  round2FinalValueEl.className = `final-value-card ${metrics.eligible ? "pass" : "fail"}`;
+  round2FinalValueEl.innerHTML = `
+    <small>Strategy-Weighted Final Value</small>
+    <strong>${formatNumber(metrics.finalValue)} <span>/100</span></strong>
+    <p>${metrics.eligible ? "Good plan! You're on the right track." : "Adjust the failed checks to become eligible."}</p>
+  `;
+}
+
+function renderRound2Confirmation(metrics) {
+  if (!state.round2.confirmed) {
+    round2ConfirmationEl.textContent = "";
+    round2ConfirmationEl.className = "confirmation-message";
+    return;
+  }
+
+  round2ConfirmationEl.className = `confirmation-message ${metrics.eligible ? "pass" : "fail"}`;
+  round2ConfirmationEl.textContent = metrics.eligible
+    ? `Round 2 feasible: final value ${formatNumber(metrics.finalValue)} with ${metrics.operationalMode.label} operations.`
+    : "Round 2 needs adjustment: check support workers, budget, capacity, and performance thresholds.";
+}
+
+function evaluateRound2() {
+  const humanResources = ROUND2_RESOURCES.filter((resource) => resource.group === "human");
+  const robotResources = ROUND2_RESOURCES.filter((resource) => resource.group === "robot");
+  const selectedStrategy = ROUND2_STRATEGIES.find((strategy) => strategy.id === state.round2.strategy) || ROUND2_STRATEGIES[0];
+  const humanCount = sum(humanResources, (resource) => getRound2Quantity(resource.id));
+  const robotCount = sum(robotResources, (resource) => getRound2Quantity(resource.id));
+  const humanCapacity = sum(humanResources, (resource) => getRound2Quantity(resource.id) * resource.capacity);
+  const robotCapacity = sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.capacity);
+  const netDailyCapacity = humanCapacity + robotCapacity;
+  const totalCost = sum(ROUND2_RESOURCES, (resource) => getRound2Quantity(resource.id) * resource.cost);
+  const requiredSupport = sum(robotResources, (resource) => getRound2Quantity(resource.id) * (resource.supportLoad || 0));
+  const supportWorkerCapacity = getRound2Quantity("supportWorkers");
+  const productivity = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.productivity));
+  const safety = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.safety));
+  const effort = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.effort));
+  const robotCapacityShare = netDailyCapacity > 0 ? robotCapacity / netDailyCapacity : 0;
+  const operationalMode = getOperationalMode(robotCapacityShare);
+  const aligned = selectedStrategy.id === operationalMode.id;
+  const weightedScore =
+    productivity * selectedStrategy.weights.productivity +
+    safety * selectedStrategy.weights.safety +
+    effort * selectedStrategy.weights.effort;
+  const finalValue = Math.max(0, weightedScore - (aligned ? 0 : 10));
+  const capacityFeasible = netDailyCapacity >= ROUND2_PROJECT.requiredDailyCapacity;
+  const budgetFeasible = totalCost <= ROUND2_PROJECT.budgetLimit;
+  const supportFeasible = requiredSupport <= supportWorkerCapacity || requiredSupport === 0;
+  const productivityFeasible = productivity >= 70;
+  const safetyFeasible = safety >= 70;
+  const effortFeasible = effort >= 70;
+  const eligible = capacityFeasible && budgetFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
+
+  return {
+    humanCount,
+    robotCount,
+    humanCapacity,
+    robotCapacity,
+    netDailyCapacity,
+    totalCost,
+    requiredSupport,
+    supportWorkerCapacity,
+    productivity,
+    safety,
+    effort,
+    selectedStrategy,
+    operationalMode,
+    aligned,
+    weightedScore,
+    finalValue,
+    budgetUsage: ROUND2_PROJECT.budgetLimit > 0 ? (totalCost / ROUND2_PROJECT.budgetLimit) * 100 : 0,
+    capacityFeasible,
+    budgetFeasible,
+    supportFeasible,
+    productivityFeasible,
+    safetyFeasible,
+    effortFeasible,
+    eligible,
+  };
+}
+
+function getOperationalMode(robotCapacityShare) {
+  if (robotCapacityShare < 0.35) {
+    return ROUND2_STRATEGIES.find((strategy) => strategy.id === "human-led");
+  }
+  if (robotCapacityShare <= 0.75) {
+    return ROUND2_STRATEGIES.find((strategy) => strategy.id === "collaborative");
+  }
+  return ROUND2_STRATEGIES.find((strategy) => strategy.id === "robot-led");
+}
+
+function setRound2Quantity(resourceId, rawValue) {
+  const resource = ROUND2_RESOURCES.find((item) => item.id === resourceId);
+  if (!resource) return;
+
+  const current = getRound2Quantity(resourceId);
+  const value = Math.max(0, Math.round(Number.isFinite(rawValue) ? rawValue : 0));
+  let nextValue = value;
+
+  if (resource.group === "human") {
+    const otherHumanTotal = ROUND2_RESOURCES.filter((item) => item.group === "human" && item.id !== resourceId).reduce(
+      (total, item) => total + getRound2Quantity(item.id),
+      0
+    );
+    nextValue = Math.min(value, Math.max(0, ROUND2_PROJECT.maxHumanWorkers - otherHumanTotal));
+  }
+
+  state.round2.quantities[resourceId] = nextValue;
+  state.round2.confirmed = false;
+
+  if (current !== nextValue) {
+    persistState();
+    render();
+  }
+}
+
+function getRound2Quantity(resourceId) {
+  const value = Number(state.round2.quantities[resourceId]);
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
 }
 
 function setQuantity(resourceId, rawValue, group) {

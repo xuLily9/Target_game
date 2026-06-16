@@ -246,6 +246,119 @@
       </section>
     </main>
 
+    <main class="round2-app" id="round-2-workspace">
+      <header class="round2-header">
+        <div class="round2-badge">
+          <span>Round</span>
+          <strong>2</strong>
+        </div>
+        <div class="round2-title">
+          <h1>Round 2 - Optimise Your Delivery Plan</h1>
+          <p>Select your HRC strategy and allocate resources to maximise performance.</p>
+        </div>
+
+        <section class="round2-top-card">
+          <span class="metric-icon gauge-icon" aria-hidden="true"></span>
+          <div>
+            <small>Capacity Target</small>
+            <strong>20 Loads / Day</strong>
+            <p>Minimum required capacity</p>
+          </div>
+        </section>
+
+        <section class="round2-top-card">
+          <span class="metric-icon coin-icon" aria-hidden="true"></span>
+          <div>
+            <small>Budget Limit</small>
+            <strong>200 Credits</strong>
+            <p>Maximum allowed budget</p>
+          </div>
+        </section>
+
+        <section class="round2-progress">
+          <small>Mission Progress</small>
+          <div class="progress-steps">
+            <span class="step">1</span>
+            <i></i>
+            <span class="step active">2</span>
+          </div>
+          <div class="step-labels">
+            <span>Round 1</span>
+            <strong>Round 2</strong>
+          </div>
+        </section>
+      </header>
+
+      <section class="round2-layout">
+        <div class="round2-main">
+          <section class="round2-panel">
+            <div class="round2-step-title">
+              <span>Step 1</span>
+              <div>
+                <h2>Select HRC Strategy</h2>
+                <p>Choose the Human-Robot Collaboration strategy that best fits your mission.</p>
+              </div>
+            </div>
+            <div class="strategy-card-grid" id="round2-strategy-grid"></div>
+            <div class="strategy-note">Your selected strategy determines how each performance dimension is weighted in the Final Value Score.</div>
+          </section>
+
+          <section class="round2-panel">
+            <div class="round2-step-title inline">
+              <span>Step 2</span>
+              <div>
+                <h2>Resource Selection</h2>
+                <p>Allocate resources. Robot values indicate contribution to each performance dimension.</p>
+              </div>
+              <div class="round2-availability">
+                <b>Available Workers: 20</b>
+                <b>Available Budget: 200 Credits</b>
+              </div>
+            </div>
+            <div class="round2-resource-grid" id="round2-resource-grid"></div>
+          </section>
+
+          <section class="round2-bottom-grid">
+            <section class="round2-panel">
+              <div class="round2-step-title inline">
+                <span>Step 3</span>
+                <div>
+                  <h2>Constraint Check</h2>
+                  <p>All requirements must be met to be eligible.</p>
+                </div>
+              </div>
+              <div class="constraint-grid" id="round2-constraints"></div>
+            </section>
+
+            <section class="round2-panel">
+              <div class="round2-step-title inline">
+                <span>Step 4</span>
+                <div>
+                  <h2>Strategy-Operation Alignment</h2>
+                  <p>Good alignment gives you the best results.</p>
+                </div>
+              </div>
+              <div class="alignment-card" id="round2-alignment"></div>
+            </section>
+          </section>
+        </div>
+
+        <aside class="round2-dashboard">
+          <h2>Live Performance Dashboard</h2>
+          <div id="round2-dashboard-metrics"></div>
+          <section class="final-value-card" id="round2-final-value"></section>
+          <div class="round2-actions">
+            <button class="round2-reset" id="reset-round2" type="button">Reset Plan</button>
+            <button class="round2-confirm" id="confirm-round2" type="button">
+              <span>Confirm &amp; Calculate<small>See Round 2 Results</small></span>
+              <b aria-hidden="true">+</b>
+            </button>
+          </div>
+          <div class="confirmation-message" id="round2-confirmation" role="status"></div>
+        </aside>
+      </section>
+    </main>
+
     <script src="./app.js"></script>
   </body>
 </html>
