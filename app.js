@@ -8,6 +8,8 @@ const PROJECT = {
   days: 5,
   requiredDailyCapacity: 20,
   budgetLimit: 200,
+  budgetPenaltyMultiplier: 2,
+  schedulePenaltyPerDay: 25,
   maxHumanWorkers: 20,
   maxRobots: 12,
 };
@@ -264,6 +266,16 @@ confirmButton.addEventListener("click", () => {
     return;
   }
   const metrics = evaluateRound();
+  if (!metrics.supportFeasible) {
+    confirmationMessageEl.className = "confirmation-message fail";
+    confirmationMessageEl.textContent = "Robot Support Check failed. Add enough support workers to support your current robot plan before final submission.";
+    return;
+  }
+  if (!metrics.capacityFeasible) {
+    confirmationMessageEl.className = "confirmation-message fail";
+    confirmationMessageEl.textContent = "Total Capacity must be greater than 0 Units / Day before final submission.";
+    return;
+  }
   state.confirmed = true;
   saveRound1Submission(metrics);
   persistState();
@@ -651,8 +663,8 @@ function renderResourceCards(group, container, metrics) {
             </div>
           </div>
           <div class="cost-row">
-            <span>Cost</span>
-            <strong>${resource.cost} Credits / ${resource.group === "human" ? "Worker" : resource.id === "multiRobotFleets" ? "Fleet" : "Robot"} / Day</strong>
+            <span>Credits</span>
+            <strong>${resource.cost} Credits / ${resource.group === "human" ? "Worker" : resource.id === "multiRobotFleets" ? "Fleet" : "Robot"}</strong>
           </div>
         </article>
       `;
@@ -764,13 +776,13 @@ function renderSummaryRow(resource, quantity) {
 }
 
 function renderResultCards(metrics) {
-  capacityCardEl.className = `result-card total-capacity ${metrics.capacityFeasible ? "pass" : "warning"}`;
+  capacityCardEl.className = `result-card total-capacity ${metrics.targetCapacityFeasible ? "pass" : "warning"}`;
   capacityCardEl.innerHTML = `
     <span class="result-icon gauge-icon" aria-hidden="true"></span>
     <div>
       <small>Total Expected Capacity</small>
       <strong>${formatNumber(metrics.totalCapacity)} Units / Day</strong>
-      <p>Target: <b>20 Units / Day</b></p>
+      <p>Submission minimum: <b class="${metrics.capacityFeasible ? "minimum-pass" : "minimum-fail"}">&gt; 0 Units / Day</b> | Target: <b class="capacity-target-value">20 Units / Day</b></p>
     </div>
   `;
 
@@ -778,9 +790,9 @@ function renderResultCards(metrics) {
   costCardEl.innerHTML = `
     <span class="result-icon coin-icon" aria-hidden="true"></span>
     <div>
-      <small>Estimated Total Cost</small>
+      <small>Total Credits</small>
       <strong>${formatNumber(metrics.totalCost)} Credits</strong>
-      <p>Budget Limit: <b>200 Credits</b></p>
+      <p>Budget Limit: <b>200 Credits</b> | Penalty: <b>${formatNumber(metrics.budgetPenalty)}</b></p>
     </div>
   `;
 
@@ -791,10 +803,10 @@ function renderResultCards(metrics) {
       <strong>${metrics.supportFeasible ? "PASS" : "FAIL"}</strong>
       <p>Robot Support Workers provide ${formatNumber(metrics.supportWorkerCapacity)} support units; robots require ${formatNumber(metrics.requiredSupport)}.</p>
     </div>
-    <div>
+    <div class="duration-check ${metrics.scheduleFeasible ? "pass" : "fail"}">
       <small>Estimated Duration</small>
       <strong>${metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-"}</strong>
-      <p>Project limit: ${PROJECT.days} Days</p>
+      <p>Project limit: ${PROJECT.days} Days | Penalty: ${formatNumber(metrics.schedulePenalty)}</p>
     </div>
   `;
 }
@@ -821,14 +833,14 @@ function renderConfirmation(metrics) {
     return;
   }
 
-  confirmationMessageEl.className = `confirmation-message ${metrics.round1Feasible ? "pass" : "fail"}`;
+  confirmationMessageEl.className = `confirmation-message ${metrics.round1Submittable ? "pass" : "fail"}`;
   confirmationMessageEl.textContent = locked
-    ? metrics.round1Feasible
-      ? "Round 1 final submission is locked and feasible. Summary unlocks after every team submits Round 1."
-      : "Round 1 final submission is recorded, but this plan is not feasible. It will not be eligible to win Round 1."
-    : metrics.round1Feasible
-      ? "Round 1 submitted successfully. Your final plan is now locked."
-      : "Round 1 submitted. This plan is not feasible, so it will appear as Not feasible in the summary.";
+    ? metrics.round1Submittable
+      ? `Round 1 final submission is locked. Final score: ${formatNumber(metrics.finalScore)}. Summary unlocks after every team submits Round 1.`
+      : "Round 1 final submission is recorded, but this plan is not a valid submission."
+    : metrics.round1Submittable
+      ? `Round 1 submitted successfully. Final score: ${formatNumber(metrics.finalScore)}. Your final plan is now locked.`
+      : "Round 1 is not ready for final submission.";
 }
 
 function renderRound1SummaryBoard() {
@@ -850,10 +862,10 @@ function renderRound1SummaryBoard() {
   round1SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 1",
     title: "Round 1 Submission Summary",
-    helper: "Lowest-cost feasible solution wins. Submitted teams are locked.",
+    helper: "Lowest final score wins. Final score = credits + budget penalty + schedule penalty.",
     submittedTeams,
     winner,
-    columns: ["Team", "Selection", "Capacity", "Support", "Cost", "Feasible", "Result"],
+    columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Penalty", "Final Score", "Result"],
     rowRenderer: renderRound1SummaryRow,
   });
 }
@@ -877,10 +889,10 @@ function renderRound2SummaryBoard() {
   round2SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 2",
     title: "Round 2 Final Submission Summary",
-    helper: "Highest eligible strategy-weighted final value wins; lower cost breaks ties.",
+    helper: "Highest eligible strategy-weighted final value wins; lower credits break ties.",
     submittedTeams,
     winner,
-    columns: ["Team", "Strategy", "Selection", "Final Value", "Cost", "Eligible", "Result"],
+    columns: ["Team", "Strategy", "Selection", "Final Value", "Credits", "Eligible", "Result"],
     rowRenderer: renderRound2SummaryRow,
   });
 }
@@ -943,6 +955,10 @@ function renderRound1SummaryRow(team, winner) {
   const submission = team.round1Submission;
   const metrics = submission.metrics;
   const isWinner = winner && String(winner.teamId) === String(team.teamId);
+  const budgetPenalty = Number(metrics.budgetPenalty || 0);
+  const schedulePenalty = Number(metrics.schedulePenalty || 0);
+  const finalScore = Number.isFinite(metrics.finalScore) ? metrics.finalScore : metrics.totalCost + budgetPenalty + schedulePenalty;
+  const validSubmission = isRound1SubmissionValid(metrics);
   return `
     <tr class="${isWinner ? "winner" : ""}">
       <td><strong>${getTeamLabel(team)}</strong></td>
@@ -950,8 +966,9 @@ function renderRound1SummaryRow(team, winner) {
       <td>${formatNumber(metrics.totalCapacity)} Units/Day</td>
       <td>${formatNumber(metrics.supportWorkerCapacity)} / ${formatNumber(metrics.requiredSupport)}</td>
       <td>${formatNumber(metrics.totalCost)} Credits</td>
-      <td><span class="${metrics.round1Feasible ? "status-pass" : "status-fail"}">${metrics.round1Feasible ? "YES" : "NO"}</span></td>
-      <td>${isWinner ? "Winner" : metrics.round1Feasible ? "Feasible" : "Not feasible"}</td>
+      <td>${formatNumber(budgetPenalty + schedulePenalty)}</td>
+      <td>${formatNumber(finalScore)}</td>
+      <td>${isWinner ? "Winner" : validSubmission ? "Valid" : "Invalid"}</td>
     </tr>
   `;
 }
@@ -975,8 +992,19 @@ function renderRound2SummaryRow(team, winner) {
 
 function getRound1Winner(teams) {
   return teams
-    .filter((team) => team.round1Submission.metrics.round1Feasible)
-    .sort((a, b) => a.round1Submission.metrics.totalCost - b.round1Submission.metrics.totalCost || Number(a.teamId) - Number(b.teamId))[0] || null;
+    .filter((team) => isRound1SubmissionValid(team.round1Submission.metrics))
+    .sort((a, b) => getRound1FinalScore(a) - getRound1FinalScore(b) || Number(a.teamId) - Number(b.teamId))[0] || null;
+}
+
+function getRound1FinalScore(team) {
+  const metrics = team.round1Submission.metrics;
+  if (Number.isFinite(metrics.finalScore)) return metrics.finalScore;
+  return metrics.totalCost + Number(metrics.budgetPenalty || 0) + Number(metrics.schedulePenalty || 0);
+}
+
+function isRound1SubmissionValid(metrics) {
+  if (typeof metrics.round1Submittable === "boolean") return metrics.round1Submittable;
+  return Boolean(metrics.supportFeasible && metrics.capacityFeasible);
 }
 
 function getRound2Winner(teams) {
@@ -1014,10 +1042,17 @@ function evaluateRound() {
   const requiredSupport = sum(robotResources, (resource) => getQuantity(resource.id) * (resource.supportLoad || 0));
   const supportWorkerCapacity = getQuantity("supportWorkers") * (getResource("supportWorkers").supportCapacity || 0);
   const estimatedDuration = totalCapacity > 0 ? PROJECT.totalDemand / totalCapacity : 0;
-  const capacityFeasible = totalCapacity >= PROJECT.requiredDailyCapacity;
+  const capacityFeasible = totalCapacity > 0;
+  const targetCapacityFeasible = totalCapacity >= PROJECT.requiredDailyCapacity;
   const budgetFeasible = totalCost <= PROJECT.budgetLimit;
   const supportFeasible = requiredSupport <= supportWorkerCapacity || requiredSupport === 0;
   const scheduleFeasible = estimatedDuration > 0 && estimatedDuration <= PROJECT.days;
+  const budgetOverrun = Math.max(0, totalCost - PROJECT.budgetLimit);
+  const scheduleOverrun = Math.max(0, estimatedDuration - PROJECT.days);
+  const budgetPenalty = budgetOverrun * PROJECT.budgetPenaltyMultiplier;
+  const schedulePenalty = scheduleOverrun * PROJECT.schedulePenaltyPerDay;
+  const finalScore = totalCost + budgetPenalty + schedulePenalty;
+  const round1Submittable = supportFeasible && capacityFeasible;
 
   return {
     humanCount,
@@ -1030,10 +1065,17 @@ function evaluateRound() {
     supportWorkerCapacity,
     estimatedDuration,
     capacityFeasible,
+    targetCapacityFeasible,
     budgetFeasible,
     supportFeasible,
     scheduleFeasible,
-    round1Feasible: capacityFeasible && budgetFeasible && supportFeasible && scheduleFeasible,
+    budgetOverrun,
+    scheduleOverrun,
+    budgetPenalty,
+    schedulePenalty,
+    finalScore,
+    round1Submittable,
+    round1Feasible: round1Submittable,
   };
 }
 
@@ -1164,7 +1206,7 @@ function renderRound2ResourceCard(resource, metrics) {
             <button data-r2-resource-id="${resource.id}" data-action="increment" type="button" aria-label="Increase ${resource.label}" ${canIncrement ? "" : "disabled"}>+</button>
           </div>
         </div>
-        <div class="r2-cost">Cost: ${resource.cost} Credits / ${resource.group === "human" ? "Worker" : resource.id === "multiRobotFleets" ? "Fleet" : "Robot"} / Day</div>
+        <div class="r2-cost">Credits: ${resource.cost} / ${resource.group === "human" ? "Worker" : resource.id === "multiRobotFleets" ? "Fleet" : "Robot"}</div>
       </article>
     `;
 }
@@ -1190,13 +1232,13 @@ function renderRound2Dashboard(metrics) {
     renderDashboardMetric("Productivity", `${formatNumber(metrics.productivity)} /100`, "Weighted Score", metrics.productivityFeasible, metrics.productivity, 70, "purple"),
     renderDashboardMetric("Operational Safety", `${formatNumber(metrics.safety)} /100`, "Weighted Score", metrics.safetyFeasible, metrics.safety, 70, "blue"),
     renderDashboardMetric("Manual Effort Reduction", `${formatNumber(metrics.effort)} /100`, "Weighted Score", metrics.effortFeasible, metrics.effort, 70, "green"),
-    renderDashboardMetric("Total Cost", `${formatNumber(metrics.totalCost)} Credits`, `Budget Usage: ${formatNumber(metrics.budgetUsage)}%`, metrics.budgetFeasible, metrics.totalCost, ROUND2_PROJECT.budgetLimit, "orange"),
+    renderDashboardMetric("Credits", `${formatNumber(metrics.totalCost)} Credits`, `Budget Usage: ${formatNumber(metrics.budgetUsage)}%`, metrics.budgetFeasible, metrics.totalCost, ROUND2_PROJECT.budgetLimit, "orange"),
   ].join("");
 }
 
 function renderDashboardMetric(label, value, helper, passed, current, target, color) {
-  const denominator = label === "Total Cost" ? target : 100;
-  const marker = label === "Net Daily Capacity" ? target : label === "Total Cost" ? target : 70;
+  const denominator = label === "Credits" ? target : 100;
+  const marker = label === "Net Daily Capacity" ? target : label === "Credits" ? target : 70;
   const fillPercent = Math.min(100, denominator > 0 ? (current / denominator) * 100 : 0);
   const markerPercent = Math.min(100, denominator > 0 ? (marker / denominator) * 100 : 0);
   return `
@@ -1369,9 +1411,16 @@ function snapshotRound1Metrics(metrics) {
     supportWorkerCapacity: metrics.supportWorkerCapacity,
     estimatedDuration: metrics.estimatedDuration,
     capacityFeasible: metrics.capacityFeasible,
+    targetCapacityFeasible: metrics.targetCapacityFeasible,
     budgetFeasible: metrics.budgetFeasible,
     supportFeasible: metrics.supportFeasible,
     scheduleFeasible: metrics.scheduleFeasible,
+    budgetOverrun: metrics.budgetOverrun,
+    scheduleOverrun: metrics.scheduleOverrun,
+    budgetPenalty: metrics.budgetPenalty,
+    schedulePenalty: metrics.schedulePenalty,
+    finalScore: metrics.finalScore,
+    round1Submittable: metrics.round1Submittable,
     round1Feasible: metrics.round1Feasible,
   };
 }

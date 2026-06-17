@@ -16,26 +16,31 @@ Live demo:
 
 ## Resources
 
-| Resource | Cost | Daily Capacity | Human Support |
+| Resource | Credits | Daily Capacity | Human Support |
 | --- | ---: | ---: | ---: |
 | Construction Worker | 10 | 1 | 0 |
 | Basic Robot | 20 | 3 | 0.5 worker-day |
 | Advanced Robot | 35 | 5 | 1 worker-day |
 | Autonomous Robot Fleet | 60 | 8 | 3 worker-days |
 
-Workers can either support robots or provide manual transport capacity. The game calculates support load, remaining manual capacity, robot capacity, net daily capacity, total cost, strategy fit, and target value scores.
+Credits are one-time resource points for the selected round, not daily operating costs. Workers can either support robots or provide manual transport capacity. The game calculates support load, remaining manual capacity, robot capacity, net daily capacity, total credits, strategy fit, and target value scores.
 
 ## Rounds
 
 ### Round 1: Cost-Driven Design
 
-Teams must pass:
+Teams must pass these hard submission requirements:
 
-- Human Support Check
-- Capacity Check
-- Budget Visibility
+- Robot Support Check
+- Total Capacity > 0 units/day
 
-The Round 1 winner is the lowest-cost feasible solution.
+Budget and schedule overruns are allowed, but they add penalties:
+
+- Budget Penalty = `max(0, Credits - 200) x 2`
+- Schedule Penalty = `max(0, Duration - 5) x 25`
+- Final Score = `Credits + Budget Penalty + Schedule Penalty`
+
+The Round 1 winner is the valid submitted solution with the lowest Final Score.
 
 ### Round 2: Target Value Design
 
@@ -49,7 +54,7 @@ Teams maximize value while passing:
 - Human Support Feasible
 - HRC Strategy Fit
 
-The Round 2 winner is the highest Value Score among eligible teams. Ties go to the lower-cost solution.
+The Round 2 winner is the highest Value Score among eligible teams. Ties go to the lower-credit solution.
 
 ## Files
 

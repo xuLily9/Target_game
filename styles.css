@@ -2669,13 +2669,18 @@ button {
 }
 
 .total-capacity.pass strong,
-.total-capacity.pass p b {
+.total-capacity.pass .capacity-target-value,
+.total-capacity .minimum-pass {
   color: var(--green);
 }
 
 .total-capacity.warning strong,
-.total-capacity.warning p b {
+.total-capacity.warning .capacity-target-value {
   color: #ffca55;
+}
+
+.total-capacity .minimum-fail {
+  color: var(--danger);
 }
 
 .total-cost.pass strong {
@@ -2705,6 +2710,14 @@ button {
 }
 
 .support-card.fail strong {
+  color: var(--danger);
+}
+
+.support-card .duration-check.pass strong {
+  color: var(--green);
+}
+
+.support-card .duration-check.fail strong {
   color: var(--danger);
 }
 
