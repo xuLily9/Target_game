@@ -215,6 +215,7 @@ const selectionSummaryEl = document.getElementById("selection-summary");
 const capacityCardEl = document.getElementById("capacity-card");
 const costCardEl = document.getElementById("cost-card");
 const supportCardEl = document.getElementById("support-card");
+const finalScoreCardEl = document.getElementById("final-score-card");
 const confirmationMessageEl = document.getElementById("confirmation-message");
 const resetButton = document.getElementById("reset-round");
 const scenarioResetButton = document.getElementById("reset-scenario");
@@ -809,6 +810,18 @@ function renderResultCards(metrics) {
       <p>Project limit: ${PROJECT.days} Days | Penalty: ${formatNumber(metrics.schedulePenalty)}</p>
     </div>
   `;
+
+  const totalPenalty = metrics.budgetPenalty + metrics.schedulePenalty;
+  const scoreStatus = !metrics.round1Submittable ? "fail" : totalPenalty > 0 ? "warning" : "pass";
+  finalScoreCardEl.className = `result-card final-score-card ${scoreStatus}`;
+  finalScoreCardEl.innerHTML = `
+    <span class="result-icon score-icon" aria-hidden="true"></span>
+    <div>
+      <small>Final Score</small>
+      <strong>${formatNumber(metrics.finalScore)} Points</strong>
+      <p>${formatNumber(metrics.totalCost)} credits + ${formatNumber(metrics.budgetPenalty)} budget penalty + ${formatNumber(metrics.schedulePenalty)} schedule penalty</p>
+    </div>
+  `;
 }
 
 function renderConfirmation(metrics) {
@@ -836,10 +849,10 @@ function renderConfirmation(metrics) {
   confirmationMessageEl.className = `confirmation-message ${metrics.round1Submittable ? "pass" : "fail"}`;
   confirmationMessageEl.textContent = locked
     ? metrics.round1Submittable
-      ? `Round 1 final submission is locked. Final score: ${formatNumber(metrics.finalScore)}. Summary unlocks after every team submits Round 1.`
+      ? `Round 1 final submission is locked. Final score: ${formatNumber(metrics.finalScore)} points. Summary unlocks after every team submits Round 1.`
       : "Round 1 final submission is recorded, but this plan is not a valid submission."
     : metrics.round1Submittable
-      ? `Round 1 submitted successfully. Final score: ${formatNumber(metrics.finalScore)}. Your final plan is now locked.`
+      ? `Round 1 submitted successfully. Final score: ${formatNumber(metrics.finalScore)} points. Your final plan is now locked.`
       : "Round 1 is not ready for final submission.";
 }
 
@@ -862,10 +875,10 @@ function renderRound1SummaryBoard() {
   round1SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 1",
     title: "Round 1 Submission Summary",
-    helper: "Lowest final score wins. Final score = credits + budget penalty + schedule penalty.",
+    helper: "Lowest final score wins. Final score points = credits + budget penalty + schedule penalty.",
     submittedTeams,
     winner,
-    columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Penalty", "Final Score", "Result"],
+    columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Penalty", "Final Score (Points)", "Result"],
     rowRenderer: renderRound1SummaryRow,
   });
 }

@@ -1862,6 +1862,24 @@ button {
   font-weight: 800;
 }
 
+.score-icon {
+  border: 5px solid currentColor;
+  border-radius: 50%;
+  color: var(--green);
+}
+
+.score-icon::before {
+  content: "#";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: currentColor;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 2rem;
+  font-weight: 800;
+}
+
 .mission-progress {
   justify-items: center;
   padding: 12px;
@@ -2688,6 +2706,21 @@ button {
 }
 
 .total-cost.fail strong {
+  color: var(--danger);
+}
+
+.final-score-card.pass strong,
+.final-score-card.pass .score-icon {
+  color: var(--green);
+}
+
+.final-score-card.warning strong,
+.final-score-card.warning .score-icon {
+  color: #ffca55;
+}
+
+.final-score-card.fail strong,
+.final-score-card.fail .score-icon {
   color: var(--danger);
 }
 
