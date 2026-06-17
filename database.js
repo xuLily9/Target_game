@@ -40,7 +40,8 @@
       headers: getHeaders(),
     });
     if (!response.ok) {
-      throw new Error(`Database load failed: ${response.status}`);
+      const message = await response.text();
+      throw new Error(`Database load failed: ${response.status} ${message}`);
     }
     const rows = await response.json();
     return rows.map(normalizeTeamRow).filter((team) => team.teamId);
@@ -59,7 +60,8 @@
       body: JSON.stringify(row),
     });
     if (!response.ok) {
-      throw new Error(`Database save failed: ${response.status}`);
+      const message = await response.text();
+      throw new Error(`Database save failed: ${response.status} ${message}`);
     }
     return team;
   }
