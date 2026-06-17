@@ -3526,10 +3526,11 @@ body {
 .round2-availability {
   justify-self: end;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 16px;
   color: #d9e7f4;
   font-size: 0.78rem;
-  white-space: nowrap;
 }
 
 .strategy-card-grid {

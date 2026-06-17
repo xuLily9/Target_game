@@ -53,6 +53,8 @@ Teams maximize value while passing:
 
 - Budget <= 200
 - Capacity >= 20 units/day
+- Max 20 human workers total
+- Max 12 robot/fleet units total
 - Productivity >= 70
 - Operational Safety >= 70
 - Manual Physical Effort Reduction >= 70

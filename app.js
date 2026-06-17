@@ -102,6 +102,7 @@ const ROUND2_PROJECT = {
   requiredDailyCapacity: 20,
   budgetLimit: 200,
   maxHumanWorkers: 20,
+  maxRobots: 12,
 };
 
 const ROUND2_STRATEGIES = [
@@ -1199,8 +1200,12 @@ function renderRound2ResourceCard(resource, metrics) {
     const locked = !isRound2Unlocked() || isRound2Locked();
     const value = getRound2Quantity(resource.id);
     const isHuman = resource.group === "human";
+    const isRobot = resource.group === "robot";
     const humanTotalWithoutCurrent = metrics.humanCount - (isHuman ? value : 0);
-    const maxForResource = isHuman ? Math.max(0, ROUND2_PROJECT.maxHumanWorkers - humanTotalWithoutCurrent) : 99;
+    const robotTotalWithoutCurrent = metrics.robotCount - (isRobot ? value : 0);
+    const maxForResource = isHuman
+      ? Math.max(0, ROUND2_PROJECT.maxHumanWorkers - humanTotalWithoutCurrent)
+      : Math.max(0, ROUND2_PROJECT.maxRobots - robotTotalWithoutCurrent);
     const canIncrement = !locked && value < maxForResource;
 
     return `
@@ -1275,6 +1280,7 @@ function renderRound2Constraints(metrics) {
   const constraints = [
     ["Capacity", `≥ ${ROUND2_PROJECT.requiredDailyCapacity} Loads/Day`, formatNumber(metrics.netDailyCapacity), metrics.capacityFeasible],
     ["Support", `≥ ${formatNumber(metrics.requiredSupport)} Support`, formatNumber(metrics.supportWorkerCapacity), metrics.supportFeasible],
+    ["Robots/Fleets", `≤ ${ROUND2_PROJECT.maxRobots} units`, formatNumber(metrics.robotCount), metrics.robotLimitFeasible],
     ["Budget", `≤ ${ROUND2_PROJECT.budgetLimit} Credits`, formatNumber(metrics.totalCost), metrics.budgetFeasible],
     ["Productivity", "≥ 70", formatNumber(metrics.productivity), metrics.productivityFeasible],
     ["Operational Safety", "≥ 70", formatNumber(metrics.safety), metrics.safetyFeasible],
@@ -1378,11 +1384,12 @@ function evaluateRound2() {
   const finalValue = Math.max(0, weightedScore - (aligned ? 0 : 10));
   const capacityFeasible = netDailyCapacity >= ROUND2_PROJECT.requiredDailyCapacity;
   const budgetFeasible = totalCost <= ROUND2_PROJECT.budgetLimit;
+  const robotLimitFeasible = robotCount <= ROUND2_PROJECT.maxRobots;
   const supportFeasible = requiredSupport <= supportWorkerCapacity || requiredSupport === 0;
   const productivityFeasible = productivity >= 70;
   const safetyFeasible = safety >= 70;
   const effortFeasible = effort >= 70;
-  const eligible = Boolean(selectedStrategy) && capacityFeasible && budgetFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
+  const eligible = Boolean(selectedStrategy) && capacityFeasible && budgetFeasible && robotLimitFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
 
   return {
     humanCount,
@@ -1404,6 +1411,7 @@ function evaluateRound2() {
     budgetUsage: ROUND2_PROJECT.budgetLimit > 0 ? (totalCost / ROUND2_PROJECT.budgetLimit) * 100 : 0,
     capacityFeasible,
     budgetFeasible,
+    robotLimitFeasible,
     supportFeasible,
     productivityFeasible,
     safetyFeasible,
@@ -1462,6 +1470,7 @@ function snapshotRound2Metrics(metrics) {
     budgetUsage: metrics.budgetUsage,
     capacityFeasible: metrics.capacityFeasible,
     budgetFeasible: metrics.budgetFeasible,
+    robotLimitFeasible: metrics.robotLimitFeasible,
     supportFeasible: metrics.supportFeasible,
     productivityFeasible: metrics.productivityFeasible,
     safetyFeasible: metrics.safetyFeasible,
@@ -1495,6 +1504,12 @@ function setRound2Quantity(resourceId, rawValue) {
       0
     );
     nextValue = Math.min(value, Math.max(0, ROUND2_PROJECT.maxHumanWorkers - otherHumanTotal));
+  } else if (resource.group === "robot") {
+    const otherRobotTotal = ROUND2_RESOURCES.filter((item) => item.group === "robot" && item.id !== resourceId).reduce(
+      (total, item) => total + getRound2Quantity(item.id),
+      0
+    );
+    nextValue = Math.min(value, Math.max(0, ROUND2_PROJECT.maxRobots - otherRobotTotal));
   }
 
   state.round2.quantities[resourceId] = nextValue;
