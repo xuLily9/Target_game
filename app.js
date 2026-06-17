@@ -1215,6 +1215,7 @@ function renderRound2ResourceCard(resource, metrics) {
         </div>
         <h4>${resource.label}</h4>
         <p>${resource.description}</p>
+        ${renderRound2CapacityPill(resource)}
         ${renderRound2ResourceEffects(resource)}
         <div class="quantity-row">
           <span>Quantity</span>
@@ -1229,10 +1230,23 @@ function renderRound2ResourceCard(resource, metrics) {
     `;
 }
 
+function renderRound2CapacityPill(resource) {
+  const iconClass = resource.group === "human" ? "human-icon" : "robot-icon";
+  const label = resource.supportCapacity ? "Support Contribution" : "Capacity Contribution";
+  const value = resource.supportCapacity
+    ? `${formatNumber(resource.supportCapacity)} Support Unit / Day`
+    : `${formatNumber(resource.capacity)} Units / Day`;
+  return `
+    <div class="capacity-pill r2-capacity-pill">
+      <span class="mini-icon ${iconClass}" aria-hidden="true"></span>
+      <span><small>${label}</small>${value}</span>
+    </div>
+  `;
+}
+
 function renderRound2ResourceEffects(resource) {
   if (!resource.effects) {
-    const contribution = resource.supportCapacity ? `${resource.supportCapacity} support unit` : `${resource.capacity} load / day`;
-    return `<div class="r2-effects"><span>${contribution}</span></div>`;
+    return `<div class="r2-effects empty" aria-hidden="true"></div>`;
   }
 
   return `
