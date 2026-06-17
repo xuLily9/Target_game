@@ -1,7 +1,7 @@
-const STORAGE_KEY = "construction-logistics-round-1-v3";
-const WORKSHOP_TEAMS_KEY = "construction-workshop-teams-v3";
-const ACTIVE_TEAM_ID_KEY = "construction-workshop-active-team-id-v3";
-const SESSION_TEAM_ID_KEY = "construction-workshop-session-team-id-v3";
+const STORAGE_KEY = "construction-logistics-round-1-v4";
+const WORKSHOP_TEAMS_KEY = "construction-workshop-teams-v4";
+const ACTIVE_TEAM_ID_KEY = "construction-workshop-active-team-id-v4";
+const SESSION_TEAM_ID_KEY = "construction-workshop-session-team-id-v4";
 
 const PROJECT = {
   totalDemand: 100,
@@ -284,6 +284,11 @@ confirmRound2Button?.addEventListener("click", () => {
     render();
     return;
   }
+  if (!state.round2.strategy) {
+    round2ConfirmationEl.className = "confirmation-message fail";
+    round2ConfirmationEl.textContent = "Please select an HRC strategy before submitting Round 2.";
+    return;
+  }
   const metrics = evaluateRound2();
   state.round2.confirmed = true;
   saveRound2Submission(metrics);
@@ -303,7 +308,7 @@ function createEmptyRound2Quantities() {
 
 function createDefaultRound2State() {
   return {
-    strategy: "robot-led",
+    strategy: "",
     quantities: createEmptyRound2Quantities(),
     confirmed: false,
   };
@@ -1190,10 +1195,10 @@ function renderRound2Alignment(metrics) {
   round2AlignmentEl.innerHTML = `
     <div class="alignment-icon" aria-hidden="true"></div>
     <div>
-      <strong>${metrics.aligned ? "Good Alignment" : "Strategy Mismatch"}</strong>
+      <strong>${!state.round2.strategy ? "Select Strategy" : metrics.aligned ? "Good Alignment" : "Strategy Mismatch"}</strong>
       <p>Selected: ${metrics.selectedStrategy.label}. Operational mode: ${metrics.operationalMode.label}.</p>
     </div>
-    <b>${metrics.aligned ? "100%" : "-10"}</b>
+    <b>${!state.round2.strategy ? "--" : metrics.aligned ? "100%" : "-10"}</b>
   `;
 }
 
@@ -1211,13 +1216,15 @@ function renderRound2Confirmation(metrics) {
   const locked = isRound2Locked();
   if (resetRound2Button) resetRound2Button.disabled = !unlocked || locked;
   if (confirmRound2Button) {
-    confirmRound2Button.disabled = !unlocked || locked;
+    confirmRound2Button.disabled = !unlocked || locked || !state.round2.strategy;
     const labelEl = confirmRound2Button.querySelector("span");
     if (labelEl) {
       labelEl.innerHTML = locked
         ? `Round 2 Submitted<small>Final submission locked</small>`
         : unlocked
-          ? `Confirm &amp; Calculate<small>Submit Round 2 final plan</small>`
+          ? state.round2.strategy
+            ? `Confirm &amp; Calculate<small>Submit Round 2 final plan</small>`
+            : `Select Strategy<small>Choose a Round 2 strategy first</small>`
           : `Round 2 Locked<small>Submit Round 1 first</small>`;
     }
   }
@@ -1247,7 +1254,7 @@ function renderRound2Confirmation(metrics) {
 function evaluateRound2() {
   const humanResources = ROUND2_RESOURCES.filter((resource) => resource.group === "human");
   const robotResources = ROUND2_RESOURCES.filter((resource) => resource.group === "robot");
-  const selectedStrategy = ROUND2_STRATEGIES.find((strategy) => strategy.id === state.round2.strategy) || ROUND2_STRATEGIES[0];
+  const selectedStrategy = ROUND2_STRATEGIES.find((strategy) => strategy.id === state.round2.strategy) || null;
   const humanCount = sum(humanResources, (resource) => getRound2Quantity(resource.id));
   const robotCount = sum(robotResources, (resource) => getRound2Quantity(resource.id));
   const humanCapacity = sum(humanResources, (resource) => getRound2Quantity(resource.id) * resource.capacity);
@@ -1261,11 +1268,12 @@ function evaluateRound2() {
   const effort = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.effort));
   const robotCapacityShare = netDailyCapacity > 0 ? robotCapacity / netDailyCapacity : 0;
   const operationalMode = getOperationalMode(robotCapacityShare);
-  const aligned = selectedStrategy.id === operationalMode.id;
-  const weightedScore =
-    productivity * selectedStrategy.weights.productivity +
-    safety * selectedStrategy.weights.safety +
-    effort * selectedStrategy.weights.effort;
+  const aligned = Boolean(selectedStrategy) && selectedStrategy.id === operationalMode.id;
+  const weightedScore = selectedStrategy
+    ? productivity * selectedStrategy.weights.productivity +
+      safety * selectedStrategy.weights.safety +
+      effort * selectedStrategy.weights.effort
+    : 0;
   const finalValue = Math.max(0, weightedScore - (aligned ? 0 : 10));
   const capacityFeasible = netDailyCapacity >= ROUND2_PROJECT.requiredDailyCapacity;
   const budgetFeasible = totalCost <= ROUND2_PROJECT.budgetLimit;
@@ -1273,7 +1281,7 @@ function evaluateRound2() {
   const productivityFeasible = productivity >= 70;
   const safetyFeasible = safety >= 70;
   const effortFeasible = effort >= 70;
-  const eligible = capacityFeasible && budgetFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
+  const eligible = Boolean(selectedStrategy) && capacityFeasible && budgetFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
 
   return {
     humanCount,
@@ -1287,7 +1295,7 @@ function evaluateRound2() {
     productivity,
     safety,
     effort,
-    selectedStrategy,
+    selectedStrategy: selectedStrategy || { id: "", label: "No strategy selected" },
     operationalMode,
     aligned,
     weightedScore,
