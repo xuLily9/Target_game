@@ -203,7 +203,9 @@ const VISUAL_IMAGE_SOURCES = {
   "robot fleet": "./assets/robot-fleet.svg",
 };
 
-const state = loadState();
+let teamsCache = loadJson(WORKSHOP_TEAMS_KEY, []);
+let state = loadState();
+let lastTeamsSnapshot = JSON.stringify(teamsCache);
 
 const humanGridEl = document.getElementById("human-resource-grid");
 const robotGridEl = document.getElementById("robot-resource-grid");
@@ -296,7 +298,7 @@ confirmRound2Button?.addEventListener("click", () => {
   render();
 });
 
-render();
+startApp();
 
 function createEmptyQuantities() {
   return Object.fromEntries(RESOURCES.map((resource) => [resource.id, 0]));
@@ -376,11 +378,54 @@ function persistState() {
 }
 
 function loadTeams() {
-  return loadJson(WORKSHOP_TEAMS_KEY, []);
+  return teamsCache;
 }
 
 function saveTeams(teams) {
-  localStorage.setItem(WORKSHOP_TEAMS_KEY, JSON.stringify(teams));
+  teamsCache = [...teams].sort((a, b) => Number(a.teamId) - Number(b.teamId));
+  lastTeamsSnapshot = JSON.stringify(teamsCache);
+  localStorage.setItem(WORKSHOP_TEAMS_KEY, lastTeamsSnapshot);
+}
+
+function saveTeamToDatabase(team) {
+  if (!window.WorkshopDatabase?.isEnabled()) return;
+  window.WorkshopDatabase.upsertTeam(team).catch((error) => {
+    console.warn(error);
+  });
+}
+
+function applyRemoteTeams(teams) {
+  const nextTeams = [...teams].sort((a, b) => Number(a.teamId) - Number(b.teamId));
+  const snapshot = JSON.stringify(nextTeams);
+  if (snapshot === lastTeamsSnapshot) return false;
+  teamsCache = nextTeams;
+  lastTeamsSnapshot = snapshot;
+  localStorage.setItem(WORKSHOP_TEAMS_KEY, snapshot);
+  state = loadState();
+  return true;
+}
+
+async function startApp() {
+  if (!window.WorkshopDatabase?.isEnabled()) {
+    render();
+    return;
+  }
+
+  try {
+    const remoteTeams = await window.WorkshopDatabase.loadTeams();
+    applyRemoteTeams(remoteTeams);
+  } catch (error) {
+    console.warn(error);
+  }
+
+  render();
+
+  window.WorkshopDatabase.startPolling(
+    (remoteTeams) => {
+      if (applyRemoteTeams(remoteTeams)) render();
+    },
+    (error) => console.warn(error)
+  );
 }
 
 function loadJson(key, fallback) {
@@ -442,6 +487,7 @@ function updateActiveTeam(updater) {
     updatedAt: new Date().toISOString(),
   };
   saveTeams(teams);
+  saveTeamToDatabase(teams[index]);
   return teams[index];
 }
 

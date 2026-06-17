@@ -57,6 +57,8 @@ The Round 2 winner is the highest Value Score among eligible teams. Ties go to t
 - `styles.css`: responsive simulation dashboard styling
 - `app.js`: shared formulas, local state, KPI rendering, and team comparison
 - `team.html`: local team setup page
+- `database-config.js`: optional Supabase connection settings for multi-device workshops
+- `database.js`: browser database adapter with local fallback
 
 ## Run Locally
 
@@ -72,4 +74,46 @@ Then open:
 http://127.0.0.1:4173/
 ```
 
-The app has no backend and is compatible with GitHub Pages.
+Without database settings, the app uses browser local storage and is compatible with GitHub Pages.
+
+## Multi-Device Database Setup
+
+For multiple teams on different computers, create a Supabase project and run this SQL:
+
+```sql
+create table if not exists public.workshop_teams (
+  team_id text primary key,
+  payload jsonb not null,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.workshop_teams enable row level security;
+
+create policy "Workshop teams can be read"
+on public.workshop_teams for select
+using (true);
+
+create policy "Workshop teams can be created"
+on public.workshop_teams for insert
+with check (true);
+
+create policy "Workshop teams can be updated"
+on public.workshop_teams for update
+using (true)
+with check (true);
+```
+
+Then edit `database-config.js`:
+
+```js
+window.HRC_DATABASE_CONFIG = {
+  provider: "supabase",
+  supabaseUrl: "https://YOUR_PROJECT.supabase.co",
+  supabasePublishableKey: "YOUR_SUPABASE_PUBLISHABLE_KEY",
+  supabaseAnonKey: "",
+  tableName: "workshop_teams",
+  pollIntervalMs: 2500,
+};
+```
+
+After this, all team setup, drafts, final submissions, and summary boards sync through the shared database.

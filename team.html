@@ -173,6 +173,8 @@
       </section>
     </main>
 
+    <script src="./database-config.js"></script>
+    <script src="./database.js"></script>
     <script>
       const WORKSHOP_TEAMS_KEY = "construction-workshop-teams-v4";
       const ACTIVE_TEAM_ID_KEY = "construction-workshop-active-team-id-v4";
@@ -187,6 +189,8 @@
       const feedbackEl = document.getElementById("team-feedback");
       const createdTeamsEl = document.getElementById("created-teams");
       const newTeamButton = document.getElementById("new-team");
+      let teamsCache = loadJSON(WORKSHOP_TEAMS_KEY, []);
+      let lastTeamsSnapshot = JSON.stringify(teamsCache);
 
       function loadJSON(key, fallback) {
         try {
@@ -198,11 +202,28 @@
       }
 
       function saveTeams(teams) {
-        localStorage.setItem(WORKSHOP_TEAMS_KEY, JSON.stringify(teams));
+        teamsCache = [...teams].sort((a, b) => Number(a.teamId) - Number(b.teamId));
+        lastTeamsSnapshot = JSON.stringify(teamsCache);
+        localStorage.setItem(WORKSHOP_TEAMS_KEY, lastTeamsSnapshot);
       }
 
       function getTeams() {
-        return loadJSON(WORKSHOP_TEAMS_KEY, []);
+        return teamsCache;
+      }
+
+      function applyRemoteTeams(teams) {
+        const nextTeams = [...teams].sort((a, b) => Number(a.teamId) - Number(b.teamId));
+        const snapshot = JSON.stringify(nextTeams);
+        if (snapshot === lastTeamsSnapshot) return false;
+        teamsCache = nextTeams;
+        lastTeamsSnapshot = snapshot;
+        localStorage.setItem(WORKSHOP_TEAMS_KEY, snapshot);
+        return true;
+      }
+
+      async function saveTeamToDatabase(team) {
+        if (!window.WorkshopDatabase?.isEnabled()) return;
+        await window.WorkshopDatabase.upsertTeam(team);
       }
 
       function getNextTeamId() {
@@ -242,12 +263,13 @@
         }
       }
 
-      function saveTeam(teamInfo) {
+      async function saveTeam(teamInfo) {
         const teams = getTeams();
         const nextTeams = [teamInfo, ...teams.filter((team) => String(team.teamId) !== String(teamInfo.teamId))].sort(
           (a, b) => Number(a.teamId) - Number(b.teamId)
         );
         saveTeams(nextTeams);
+        await saveTeamToDatabase(teamInfo);
         localStorage.setItem(ACTIVE_TEAM_ID_KEY, String(teamInfo.teamId));
         try {
           sessionStorage.setItem(SESSION_TEAM_ID_KEY, String(teamInfo.teamId));
@@ -309,7 +331,7 @@
         return "No submissions yet";
       }
 
-      form.addEventListener("submit", (event) => {
+      form.addEventListener("submit", async (event) => {
         event.preventDefault();
         const numericTeamId = Number(teamIdInput.value);
 
@@ -320,7 +342,13 @@
 
         const existing = getTeams().find((team) => String(team.teamId) === String(numericTeamId)) || {};
         const teamInfo = collectTeamInfo(existing);
-        saveTeam(teamInfo);
+        try {
+          await saveTeam(teamInfo);
+        } catch (error) {
+          feedbackEl.innerHTML = `<div class="warning-pill">Database save failed. Please check the connection and try again.</div>`;
+          console.warn(error);
+          return;
+        }
         window.location.href = getTeamGameUrl(teamInfo.teamId);
       });
 
@@ -334,11 +362,33 @@
         teamIdInput.focus();
       });
 
-      if (!teamIdInput.value) {
-        teamIdInput.value = getNextTeamId();
+      async function startTeamSetup() {
+        if (window.WorkshopDatabase?.isEnabled()) {
+          try {
+            const remoteTeams = await window.WorkshopDatabase.loadTeams();
+            applyRemoteTeams(remoteTeams);
+          } catch (error) {
+            console.warn(error);
+          }
+        }
+
+        if (!teamIdInput.value) {
+          teamIdInput.value = getNextTeamId();
+        }
+        fillExistingTeam();
+        renderCreatedTeams();
+
+        window.WorkshopDatabase?.startPolling?.(
+          (remoteTeams) => {
+            if (applyRemoteTeams(remoteTeams)) {
+              renderCreatedTeams();
+            }
+          },
+          (error) => console.warn(error)
+        );
       }
-      fillExistingTeam();
-      renderCreatedTeams();
+
+      startTeamSetup();
     </script>
   </body>
 </html>
