@@ -3675,19 +3675,25 @@ body {
 
 .strategy-scores span {
   display: grid;
-  gap: 4px;
+  grid-template-rows: 28px 16px;
+  gap: 3px;
+  align-items: end;
   justify-items: center;
   min-width: 0;
   text-align: center;
 }
 
 .strategy-scores small {
+  display: flex;
+  align-items: end;
+  justify-content: center;
   color: #d6e2ee;
   font-size: 0.66rem;
   line-height: 1.15;
 }
 
 .strategy-scores b {
+  display: block;
   color: var(--r2-purple);
   font-size: 0.92rem;
   line-height: 1;
