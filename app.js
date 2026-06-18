@@ -103,6 +103,12 @@ const ROUND2_PROJECT = {
   budgetLimit: 200,
   maxHumanWorkers: 20,
   maxRobots: 12,
+  performanceTarget: 70,
+  strategyMismatchPenalty: 10,
+  performanceGapPenaltyMultiplier: 0.5,
+  days: 5,
+  schedulePenaltyPerDay: 5,
+  budgetOverrunPenaltyMultiplier: 0.2,
 };
 
 const ROUND2_STRATEGIES = [
@@ -134,6 +140,18 @@ const ROUND2_STRATEGIES = [
 
 const ROUND2_RESOURCES = [
   {
+    id: "skilledWorkers",
+    group: "human",
+    label: "Skilled Workers",
+    shortLabel: "Skilled Workers",
+    description: "Experienced workers who improve manual delivery quality and site coordination.",
+    cost: 20,
+    capacity: 2,
+    effects: { productivity: 3, safety: 4, effort: 4 },
+    visual: "worker skilled",
+    accent: "blue",
+  },
+  {
     id: "materialWorkers",
     group: "human",
     label: "Construction Material Workers",
@@ -141,6 +159,7 @@ const ROUND2_RESOURCES = [
     description: "Manual transport capacity for site delivery.",
     cost: 10,
     capacity: 1,
+    effects: { productivity: 1, safety: 1, effort: 2 },
     visual: "worker general",
     accent: "blue",
   },
@@ -153,6 +172,7 @@ const ROUND2_RESOURCES = [
     cost: 10,
     capacity: 0,
     supportCapacity: 1,
+    effects: { productivity: 0, safety: 2, effort: 1 },
     visual: "worker operator",
     accent: "cyan",
   },
@@ -903,10 +923,10 @@ function renderRound2SummaryBoard() {
   round2SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 2",
     title: "Round 2 Final Submission Summary",
-    helper: "Highest eligible strategy-weighted final value wins; lower credits break ties.",
+    helper: "Highest eligible penalty-adjusted final value wins; lower credits break ties.",
     submittedTeams,
     winner,
-    columns: ["Team", "Strategy", "Selection", "Final Value", "Credits", "Eligible", "Result"],
+    columns: ["Team", "Strategy", "Selection", "Performance", "Penalty", "Final Value", "Credits", "Eligible", "Result"],
     rowRenderer: renderRound2SummaryRow,
   });
 }
@@ -996,6 +1016,8 @@ function renderRound2SummaryRow(team, winner) {
       <td><strong>${getTeamLabel(team)}</strong></td>
       <td>${metrics.selectedStrategyLabel}</td>
       <td>${formatSelectionSummary(ROUND2_RESOURCES, submission.quantities)}</td>
+      <td>${formatNumber(metrics.weightedScore)} / 100</td>
+      <td>${formatNumber(metrics.totalPenalty || 0)}</td>
       <td>${formatNumber(metrics.finalValue)} / 100</td>
       <td>${formatNumber(metrics.totalCost)} Credits</td>
       <td><span class="${metrics.eligible ? "status-pass" : "status-fail"}">${metrics.eligible ? "YES" : "NO"}</span></td>
@@ -1159,7 +1181,7 @@ function renderRound2Resources(metrics) {
   const groups = [
     {
       label: "Human Resources",
-      helper: "Workers are separated into transport capacity and robot support.",
+      helper: "Skilled, material, and support workers add capacity, support, and performance effects.",
       resources: ROUND2_RESOURCES.filter((resource) => resource.group === "human"),
     },
     {
@@ -1261,16 +1283,16 @@ function renderRound2ResourceEffects(resource) {
 function renderRound2Dashboard(metrics) {
   round2DashboardMetricsEl.innerHTML = [
     renderDashboardMetric("Net Daily Capacity", `${formatNumber(metrics.netDailyCapacity)} Loads / Day`, "Target expected delivery capacity", metrics.capacityFeasible, metrics.netDailyCapacity, ROUND2_PROJECT.requiredDailyCapacity, "blue"),
-    renderDashboardMetric("Productivity", `${formatNumber(metrics.productivity)} /100`, "Weighted Score", metrics.productivityFeasible, metrics.productivity, 70, "purple"),
-    renderDashboardMetric("Operational Safety", `${formatNumber(metrics.safety)} /100`, "Weighted Score", metrics.safetyFeasible, metrics.safety, 70, "blue"),
-    renderDashboardMetric("Manual Effort Reduction", `${formatNumber(metrics.effort)} /100`, "Weighted Score", metrics.effortFeasible, metrics.effort, 70, "green"),
+    renderDashboardMetric("Productivity", `${formatNumber(metrics.productivity)} /100`, "Performance target", metrics.productivityFeasible, metrics.productivity, ROUND2_PROJECT.performanceTarget, "purple"),
+    renderDashboardMetric("Operational Safety", `${formatNumber(metrics.safety)} /100`, "Performance target", metrics.safetyFeasible, metrics.safety, ROUND2_PROJECT.performanceTarget, "blue"),
+    renderDashboardMetric("Manual Effort Reduction", `${formatNumber(metrics.effort)} /100`, "Performance target", metrics.effortFeasible, metrics.effort, ROUND2_PROJECT.performanceTarget, "green"),
     renderDashboardMetric("Credits", `${formatNumber(metrics.totalCost)} Credits`, `Budget Usage: ${formatNumber(metrics.budgetUsage)}%`, metrics.budgetFeasible, metrics.totalCost, ROUND2_PROJECT.budgetLimit, "orange"),
   ].join("");
 }
 
 function renderDashboardMetric(label, value, helper, passed, current, target, color) {
   const denominator = label === "Credits" ? target : 100;
-  const marker = label === "Net Daily Capacity" ? target : label === "Credits" ? target : 70;
+  const marker = label === "Net Daily Capacity" || label === "Credits" ? target : ROUND2_PROJECT.performanceTarget;
   const fillPercent = Math.min(100, denominator > 0 ? (current / denominator) * 100 : 0);
   const markerPercent = Math.min(100, denominator > 0 ? (marker / denominator) * 100 : 0);
   return `
@@ -1292,13 +1314,12 @@ function renderDashboardMetric(label, value, helper, passed, current, target, co
 
 function renderRound2Constraints(metrics) {
   const constraints = [
-    ["Capacity", `≥ ${ROUND2_PROJECT.requiredDailyCapacity} Loads/Day`, formatNumber(metrics.netDailyCapacity), metrics.capacityFeasible],
+    ["Delivery Time", `≤ ${ROUND2_PROJECT.days} Days`, metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-", metrics.capacityFeasible],
     ["Support", `≥ ${formatNumber(metrics.requiredSupport)} Support`, formatNumber(metrics.supportWorkerCapacity), metrics.supportFeasible],
-    ["Robots/Fleets", `≤ ${ROUND2_PROJECT.maxRobots} units`, formatNumber(metrics.robotCount), metrics.robotLimitFeasible],
-    ["Budget", `≤ ${ROUND2_PROJECT.budgetLimit} Credits`, formatNumber(metrics.totalCost), metrics.budgetFeasible],
-    ["Productivity", "≥ 70", formatNumber(metrics.productivity), metrics.productivityFeasible],
-    ["Operational Safety", "≥ 70", formatNumber(metrics.safety), metrics.safetyFeasible],
-    ["Manual Effort Reduction", "≥ 70", formatNumber(metrics.effort), metrics.effortFeasible],
+    ["Budget Target", `Penalty above ${ROUND2_PROJECT.budgetLimit}`, formatNumber(metrics.totalCost), metrics.budgetFeasible],
+    ["Productivity", `Target ${ROUND2_PROJECT.performanceTarget}`, formatNumber(metrics.productivity), metrics.productivityFeasible],
+    ["Operational Safety", `Target ${ROUND2_PROJECT.performanceTarget}`, formatNumber(metrics.safety), metrics.safetyFeasible],
+    ["Manual Effort Reduction", `Target ${ROUND2_PROJECT.performanceTarget}`, formatNumber(metrics.effort), metrics.effortFeasible],
   ];
 
   round2ConstraintsEl.innerHTML = constraints.map(([label, rule, value, passed]) => `
@@ -1319,16 +1340,27 @@ function renderRound2Alignment(metrics) {
       <strong>${!state.round2.strategy ? "Select Strategy" : metrics.aligned ? "Good Alignment" : "Strategy Mismatch"}</strong>
       <p>Selected: ${metrics.selectedStrategy.label}. Operational mode: ${metrics.operationalMode.label}.</p>
     </div>
-    <b>${!state.round2.strategy ? "--" : metrics.aligned ? "100%" : "-10"}</b>
+    <b>${!state.round2.strategy ? "--" : metrics.aligned ? "100%" : `-${formatNumber(metrics.strategyPenalty)}`}</b>
   `;
 }
 
 function renderRound2FinalValue(metrics) {
-  round2FinalValueEl.className = `final-value-card ${metrics.eligible ? "pass" : "fail"}`;
+  const valueStatus = !state.round2.strategy || !metrics.supportFeasible || !metrics.robotLimitFeasible
+    ? "fail"
+    : metrics.totalPenalty > 0
+      ? "warning"
+      : "pass";
+  round2FinalValueEl.className = `final-value-card ${valueStatus}`;
   round2FinalValueEl.innerHTML = `
-    <small>Strategy-Weighted Final Value</small>
+    <small>Penalty-Adjusted Final Value</small>
     <strong>${formatNumber(metrics.finalValue)} <span>/100</span></strong>
-    <p>${metrics.eligible ? "Good plan! You're on the right track." : "Adjust the failed checks to become eligible."}</p>
+    <p>${formatNumber(metrics.weightedScore)} performance score - ${formatNumber(metrics.strategyPenalty)} strategy penalty - ${formatNumber(metrics.performancePenalty)} performance penalty - ${formatNumber(metrics.schedulePenalty)} time penalty - ${formatNumber(metrics.budgetPenalty)} budget penalty</p>
+    <div class="round2-score-breakdown">
+      <span><small>Strategy</small><b>-${formatNumber(metrics.strategyPenalty)}</b></span>
+      <span><small>Performance</small><b>-${formatNumber(metrics.performancePenalty)}</b></span>
+      <span><small>Time</small><b>-${formatNumber(metrics.schedulePenalty)}</b></span>
+      <span><small>Budget</small><b>-${formatNumber(metrics.budgetPenalty)}</b></span>
+    </div>
   `;
 }
 
@@ -1365,11 +1397,11 @@ function renderRound2Confirmation(metrics) {
   round2ConfirmationEl.className = `confirmation-message ${metrics.eligible ? "pass" : "fail"}`;
   round2ConfirmationEl.textContent = locked
     ? metrics.eligible
-      ? `Round 2 final submission is locked: final value ${formatNumber(metrics.finalValue)}. Summary unlocks after every team submits Round 2.`
-      : "Round 2 final submission is recorded, but this plan is not eligible to win Round 2."
+      ? `Round 2 final submission is locked: final value ${formatNumber(metrics.finalValue)} after ${formatNumber(metrics.totalPenalty)} penalty points. Summary unlocks after every team submits Round 2.`
+      : "Round 2 final submission is recorded, but support or robot limit rules are not met."
     : metrics.eligible
-      ? `Round 2 submitted successfully: final value ${formatNumber(metrics.finalValue)}. Your final plan is now locked.`
-      : "Round 2 submitted. This plan is not eligible, so it will appear as Not eligible in the summary.";
+      ? `Round 2 submitted successfully: final value ${formatNumber(metrics.finalValue)} after ${formatNumber(metrics.totalPenalty)} penalty points. Your final plan is now locked.`
+      : "Round 2 submitted. Support or robot limit rules are not met, so it will appear as Not eligible in the summary.";
 }
 
 function evaluateRound2() {
@@ -1384,9 +1416,11 @@ function evaluateRound2() {
   const totalCost = sum(ROUND2_RESOURCES, (resource) => getRound2Quantity(resource.id) * resource.cost);
   const requiredSupport = sum(robotResources, (resource) => getRound2Quantity(resource.id) * (resource.supportLoad || 0));
   const supportWorkerCapacity = getRound2Quantity("supportWorkers");
-  const productivity = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.productivity));
-  const safety = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.safety));
-  const effort = Math.min(100, 50 + sum(robotResources, (resource) => getRound2Quantity(resource.id) * resource.effects.effort));
+  const performanceResources = ROUND2_RESOURCES.filter((resource) => resource.effects);
+  const productivity = Math.min(100, 50 + sum(performanceResources, (resource) => getRound2Quantity(resource.id) * resource.effects.productivity));
+  const safety = Math.min(100, 50 + sum(performanceResources, (resource) => getRound2Quantity(resource.id) * resource.effects.safety));
+  const effort = Math.min(100, 50 + sum(performanceResources, (resource) => getRound2Quantity(resource.id) * resource.effects.effort));
+  const estimatedDuration = netDailyCapacity > 0 ? ROUND2_PROJECT.totalDemand / netDailyCapacity : 0;
   const robotCapacityShare = netDailyCapacity > 0 ? robotCapacity / netDailyCapacity : 0;
   const operationalMode = getOperationalMode(robotCapacityShare);
   const aligned = Boolean(selectedStrategy) && selectedStrategy.id === operationalMode.id;
@@ -1395,15 +1429,26 @@ function evaluateRound2() {
       safety * selectedStrategy.weights.safety +
       effort * selectedStrategy.weights.effort
     : 0;
-  const finalValue = Math.max(0, weightedScore - (aligned ? 0 : 10));
-  const capacityFeasible = netDailyCapacity >= ROUND2_PROJECT.requiredDailyCapacity;
+  const strategyPenalty = selectedStrategy && !aligned ? ROUND2_PROJECT.strategyMismatchPenalty : 0;
+  const performanceShortfall =
+    Math.max(0, ROUND2_PROJECT.performanceTarget - productivity) +
+    Math.max(0, ROUND2_PROJECT.performanceTarget - safety) +
+    Math.max(0, ROUND2_PROJECT.performanceTarget - effort);
+  const performancePenalty = performanceShortfall * ROUND2_PROJECT.performanceGapPenaltyMultiplier;
+  const scheduleOverrun = netDailyCapacity > 0 ? Math.max(0, estimatedDuration - ROUND2_PROJECT.days) : ROUND2_PROJECT.days;
+  const schedulePenalty = scheduleOverrun * ROUND2_PROJECT.schedulePenaltyPerDay;
+  const budgetOverrun = Math.max(0, totalCost - ROUND2_PROJECT.budgetLimit);
+  const budgetPenalty = budgetOverrun * ROUND2_PROJECT.budgetOverrunPenaltyMultiplier;
+  const totalPenalty = strategyPenalty + performancePenalty + schedulePenalty + budgetPenalty;
+  const finalValue = Math.max(0, weightedScore - totalPenalty);
+  const capacityFeasible = estimatedDuration > 0 && estimatedDuration <= ROUND2_PROJECT.days;
   const budgetFeasible = totalCost <= ROUND2_PROJECT.budgetLimit;
   const robotLimitFeasible = robotCount <= ROUND2_PROJECT.maxRobots;
   const supportFeasible = requiredSupport <= supportWorkerCapacity || requiredSupport === 0;
-  const productivityFeasible = productivity >= 70;
-  const safetyFeasible = safety >= 70;
-  const effortFeasible = effort >= 70;
-  const eligible = Boolean(selectedStrategy) && capacityFeasible && budgetFeasible && robotLimitFeasible && supportFeasible && productivityFeasible && safetyFeasible && effortFeasible;
+  const productivityFeasible = productivity >= ROUND2_PROJECT.performanceTarget;
+  const safetyFeasible = safety >= ROUND2_PROJECT.performanceTarget;
+  const effortFeasible = effort >= ROUND2_PROJECT.performanceTarget;
+  const eligible = Boolean(selectedStrategy) && robotLimitFeasible && supportFeasible;
 
   return {
     humanCount,
@@ -1411,6 +1456,7 @@ function evaluateRound2() {
     humanCapacity,
     robotCapacity,
     netDailyCapacity,
+    estimatedDuration,
     totalCost,
     requiredSupport,
     supportWorkerCapacity,
@@ -1421,6 +1467,14 @@ function evaluateRound2() {
     operationalMode,
     aligned,
     weightedScore,
+    strategyPenalty,
+    performanceShortfall,
+    performancePenalty,
+    scheduleOverrun,
+    schedulePenalty,
+    budgetOverrun,
+    budgetPenalty,
+    totalPenalty,
     finalValue,
     budgetUsage: ROUND2_PROJECT.budgetLimit > 0 ? (totalCost / ROUND2_PROJECT.budgetLimit) * 100 : 0,
     capacityFeasible,
@@ -1467,6 +1521,7 @@ function snapshotRound2Metrics(metrics) {
     humanCapacity: metrics.humanCapacity,
     robotCapacity: metrics.robotCapacity,
     netDailyCapacity: metrics.netDailyCapacity,
+    estimatedDuration: metrics.estimatedDuration,
     totalCost: metrics.totalCost,
     requiredSupport: metrics.requiredSupport,
     supportWorkerCapacity: metrics.supportWorkerCapacity,
@@ -1479,6 +1534,14 @@ function snapshotRound2Metrics(metrics) {
     operationalModeLabel: metrics.operationalMode.label,
     aligned: metrics.aligned,
     weightedScore: metrics.weightedScore,
+    strategyPenalty: metrics.strategyPenalty,
+    performanceShortfall: metrics.performanceShortfall,
+    performancePenalty: metrics.performancePenalty,
+    scheduleOverrun: metrics.scheduleOverrun,
+    schedulePenalty: metrics.schedulePenalty,
+    budgetOverrun: metrics.budgetOverrun,
+    budgetPenalty: metrics.budgetPenalty,
+    totalPenalty: metrics.totalPenalty,
     finalValue: metrics.finalValue,
     tieBreakScore: metrics.eligible ? metrics.finalValue + (ROUND2_PROJECT.budgetLimit - metrics.totalCost) / 10000 : 0,
     budgetUsage: metrics.budgetUsage,

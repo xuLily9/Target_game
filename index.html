@@ -10,7 +10,7 @@
       href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=8" />
+    <link rel="stylesheet" href="./styles.css?v=10" />
   </head>
   <body>
     <div class="app-shell">
@@ -247,18 +247,18 @@
         <section class="round2-top-card">
           <span class="metric-icon gauge-icon" aria-hidden="true"></span>
           <div>
-            <small>Capacity Target</small>
-            <strong>20 Loads / Day</strong>
-            <p>Minimum required capacity</p>
+            <small>Delivery Time Target</small>
+            <strong>5 Days</strong>
+            <p>20 loads/day avoids time penalty</p>
           </div>
         </section>
 
         <section class="round2-top-card">
           <span class="metric-icon coin-icon" aria-hidden="true"></span>
           <div>
-            <small>Budget Limit</small>
+            <small>Budget Target</small>
             <strong>200 Credits</strong>
-            <p>Maximum allowed budget</p>
+            <p>Overspend creates budget penalty</p>
           </div>
         </section>
 
@@ -287,7 +287,7 @@
               </div>
             </div>
             <div class="strategy-card-grid" id="round2-strategy-grid"></div>
-            <div class="strategy-note">Your selected strategy determines how each performance dimension is weighted in the Final Value Score.</div>
+            <div class="strategy-note">Your selected strategy sets the performance weights; design penalties adjust the Final Value Score.</div>
           </section>
 
           <section class="round2-panel">
@@ -295,12 +295,12 @@
               <span>Step 2</span>
               <div>
                 <h2>Resource Selection</h2>
-                <p>Allocate resources. Capacity is shown in units/day; robots also add performance values.</p>
+                <p>Allocate resources. Capacity is shown in units/day; human and robot resources also add performance values.</p>
               </div>
               <div class="round2-availability">
-                <b>Available Workers: 20</b>
-                <b>Available Robots/Fleets: 12</b>
-                <b>Available Budget: 200 Credits</b>
+                <b>Worker Pool: 20</b>
+                <b>Robot/Fleet Pool: 12</b>
+                <b>Budget Target: 200 Credits</b>
               </div>
             </div>
             <div class="round2-resource-grid" id="round2-resource-grid"></div>
@@ -311,8 +311,8 @@
               <div class="round2-step-title inline">
                 <span>Step 3</span>
                 <div>
-                  <h2>Constraint Check</h2>
-                  <p>All requirements must be met to be eligible.</p>
+                  <h2>Targets &amp; Rule Check</h2>
+                  <p>Targets may create penalties; support must be feasible.</p>
                 </div>
               </div>
               <div class="constraint-grid" id="round2-constraints"></div>
@@ -351,6 +351,6 @@
 
     <script src="./database-config.js?v=2"></script>
     <script src="./database.js?v=2"></script>
-    <script src="./app.js?v=6"></script>
+    <script src="./app.js?v=10"></script>
   </body>
 </html>

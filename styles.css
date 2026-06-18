@@ -3769,7 +3769,7 @@ body {
 }
 
 .r2-resource-group.human .r2-resource-card-grid {
-  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
 }
 
 .r2-resource-group.robot .r2-resource-card-grid {
@@ -4145,6 +4145,18 @@ body {
     linear-gradient(145deg, rgba(31, 19, 66, 0.9), rgba(8, 19, 40, 0.96));
 }
 
+.final-value-card.pass {
+  border-color: rgba(114, 209, 93, 0.54);
+}
+
+.final-value-card.warning {
+  border-color: rgba(255, 202, 85, 0.58);
+}
+
+.final-value-card.fail {
+  border-color: rgba(255, 94, 112, 0.45);
+}
+
 .final-value-card small {
   display: block;
   color: #d8c9ff;
@@ -4163,23 +4175,63 @@ body {
   text-shadow: 0 0 18px rgba(183, 108, 255, 0.72);
 }
 
+.final-value-card.pass strong {
+  color: var(--r2-green);
+  text-shadow: 0 0 18px rgba(114, 209, 93, 0.45);
+}
+
+.final-value-card.warning strong {
+  color: #ffca55;
+  text-shadow: 0 0 18px rgba(255, 202, 85, 0.34);
+}
+
+.final-value-card.fail strong {
+  color: var(--r2-danger);
+  text-shadow: 0 0 18px rgba(255, 94, 112, 0.34);
+}
+
 .final-value-card strong span {
   color: #d9b5ff;
   font-size: 1.4rem;
 }
 
 .final-value-card p {
-  display: inline-block;
+  display: block;
   margin: 16px 0 0;
-  padding: 9px 18px;
+  padding: 10px 12px;
   border-radius: 6px;
   color: #f5edff;
   background: rgba(183, 108, 255, 0.34);
-  font-size: 0.88rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
 }
 
-.final-value-card.fail {
-  border-color: rgba(255, 94, 112, 0.45);
+.round2-score-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.round2-score-breakdown span {
+  display: grid;
+  gap: 3px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 6px;
+  background: rgba(3, 16, 29, 0.42);
+}
+
+.round2-score-breakdown small {
+  color: #b9c7d4;
+  font-size: 0.72rem;
+}
+
+.round2-score-breakdown b {
+  color: #f5edff;
+  font-family: "Barlow Condensed", sans-serif;
+  font-size: 1.05rem;
+  line-height: 1;
 }
 
 .round2-actions {
@@ -4293,6 +4345,7 @@ button:disabled {
     min-height: auto;
   }
 
+  .r2-resource-group.human .r2-resource-card-grid,
   .r2-resource-group.robot .r2-resource-card-grid {
     grid-template-columns: repeat(2, minmax(180px, 1fr));
   }

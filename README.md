@@ -49,19 +49,22 @@ The Round 1 winner is the valid submitted solution with the lowest Final Score P
 
 ### Round 2: Target Value Design
 
-Teams maximize value while passing:
+Teams maximize a penalty-adjusted Human-Robot Collaboration value score.
 
-- Budget <= 200
-- Capacity >= 20 units/day
-- Max 20 human workers total
-- Max 12 robot/fleet units total
-- Productivity >= 70
-- Operational Safety >= 70
-- Manual Physical Effort Reduction >= 70
-- Human Support Feasible
-- HRC Strategy Fit
+Base Performance Score:
 
-The Round 2 winner is the highest Value Score among eligible teams. Ties go to the lower-credit solution.
+- Skilled workers, material workers, support workers, and robots all contribute to Productivity, Operational Safety, and Manual Physical Effort Reduction.
+- The three performance dimensions are weighted by the selected HRC strategy.
+
+Design Penalties:
+
+- Strategy Mismatch Penalty = `10` if the selected strategy does not match the actual resource pattern
+- Performance Weakness Penalty = `0.5 x total points below 70 across the three performance dimensions`
+- Schedule Overrun Penalty = `5 x max(0, Estimated Duration - 5)`
+- Budget Overrun Penalty = `0.2 x max(0, Credits - 200)`
+- Final Value Score = `max(0, Base Performance Score - Total Design Penalty)`
+
+The Round 2 time penalty is intentionally lighter than Round 1 because Round 2 focuses on HRC performance value. Support feasibility remains a visible rule check, while the robot/fleet limit is enforced by the resource selector. The Round 2 winner is the highest eligible Final Value Score. Ties go to the lower-credit solution.
 
 ## Files
 
