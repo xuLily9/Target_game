@@ -3566,7 +3566,7 @@ body {
 .strategy-card {
   position: relative;
   display: flex;
-  min-height: 224px;
+  min-height: 242px;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid rgba(95, 164, 224, 0.4);
@@ -3699,6 +3699,25 @@ body {
 
 .strategy-card.green .strategy-scores b {
   color: var(--r2-green);
+}
+
+.strategy-weights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  margin-top: 8px;
+}
+
+.strategy-weights span {
+  min-width: 0;
+  padding: 5px 4px;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 5px;
+  color: #dbe8f4;
+  background: rgba(3, 16, 29, 0.42);
+  font-size: 0.6rem;
+  line-height: 1.12;
+  text-align: center;
 }
 
 .strategy-note {

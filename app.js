@@ -211,7 +211,7 @@ const ROUND2_RESOURCES = [
     cost: 60,
     capacity: 8,
     supportLoad: 3,
-    effects: { productivity: 18, safety: 8, effort: 18 },
+    effects: { productivity: 16, safety: 7, effort: 16 },
     visual: "robot fleet",
     accent: "purple",
   },
@@ -1153,6 +1153,7 @@ function renderRound2Strategies() {
           ${renderStrategyStars("Operational Safety", strategy.stars.safety)}
           ${renderStrategyStars("Manual Effort Reduction", strategy.stars.effort)}
         </div>
+        ${renderStrategyWeights(strategy)}
       </article>
     `;
   }).join("");
@@ -1174,6 +1175,16 @@ function renderStrategyStars(label, count) {
       <small>${label}</small>
       <b>${"★".repeat(count)}</b>
     </span>
+  `;
+}
+
+function renderStrategyWeights(strategy) {
+  return `
+    <div class="strategy-weights" aria-label="${strategy.label} performance score weights">
+      <span>Productivity ${Math.round(strategy.weights.productivity * 100)}%</span>
+      <span>Safety ${Math.round(strategy.weights.safety * 100)}%</span>
+      <span>Effort ${Math.round(strategy.weights.effort * 100)}%</span>
+    </div>
   `;
 }
 
