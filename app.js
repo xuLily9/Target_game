@@ -1333,12 +1333,14 @@ function renderRound2Constraints(metrics) {
 }
 
 function renderRound2Alignment(metrics) {
+  const robotSharePercent = metrics.netDailyCapacity > 0 ? metrics.robotCapacityShare * 100 : 0;
   round2AlignmentEl.className = `alignment-card ${metrics.aligned ? "pass" : "fail"}`;
   round2AlignmentEl.innerHTML = `
     <div class="alignment-icon" aria-hidden="true"></div>
     <div>
       <strong>${!state.round2.strategy ? "Select Strategy" : metrics.aligned ? "Good Alignment" : "Strategy Mismatch"}</strong>
       <p>Selected: ${metrics.selectedStrategy.label}. Operational mode: ${metrics.operationalMode.label}.</p>
+      <p class="alignment-share">Robot Capacity Share: <b>${formatNumber(robotSharePercent)}%</b> <span>Operational mode is inferred from the balance of human and robot delivery capacity.</span></p>
     </div>
     <b>${!state.round2.strategy ? "--" : metrics.aligned ? "100%" : `-${formatNumber(metrics.strategyPenalty)}`}</b>
   `;
@@ -1465,6 +1467,7 @@ function evaluateRound2() {
     effort,
     selectedStrategy: selectedStrategy || { id: "", label: "No strategy selected" },
     operationalMode,
+    robotCapacityShare,
     aligned,
     weightedScore,
     strategyPenalty,
@@ -1532,6 +1535,7 @@ function snapshotRound2Metrics(metrics) {
     selectedStrategyLabel: metrics.selectedStrategy.label,
     operationalModeId: metrics.operationalMode.id,
     operationalModeLabel: metrics.operationalMode.label,
+    robotCapacityShare: metrics.robotCapacityShare,
     aligned: metrics.aligned,
     weightedScore: metrics.weightedScore,
     strategyPenalty: metrics.strategyPenalty,

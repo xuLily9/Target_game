@@ -3987,6 +3987,22 @@ body {
   line-height: 1.3;
 }
 
+.alignment-share {
+  color: #c4d3df;
+  font-size: 0.74rem;
+}
+
+.alignment-share b {
+  color: #f2f8ff;
+  font-family: "Barlow Condensed", sans-serif;
+}
+
+.alignment-share span {
+  display: block;
+  margin-top: 2px;
+  color: #aebdca;
+}
+
 .alignment-card > b {
   color: #73df5f;
   font-family: "Barlow Condensed", sans-serif;
