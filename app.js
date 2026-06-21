@@ -30,8 +30,8 @@ const RESOURCES = [
   {
     id: "generalWorkers",
     group: "human",
-    label: "General Workers",
-    cardTitle: "General Worker",
+    label: "Construction Material Workers",
+    cardTitle: "Construction Material Worker",
     description: "Supports material handling, loading, unloading, and site activities.",
     cost: 10,
     capacity: 1,

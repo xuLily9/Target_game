@@ -36,7 +36,7 @@ Teams must pass these hard submission requirements:
 
 Round 1 resource availability:
 
-- Max 20 human workers total, including skilled workers, general workers, and robot support workers
+- Max 20 human workers total, including skilled workers, construction material workers, and robot support workers
 - Max 12 robot/fleet units total, including delivery robots, quadruped robots, and multi-robot fleets
 
 Budget and schedule overruns are allowed, but they add penalties:
