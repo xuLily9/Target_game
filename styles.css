@@ -3946,6 +3946,10 @@ body {
   color: var(--r2-danger);
 }
 
+.constraint-card.warning strong {
+  color: #ffca55;
+}
+
 .constraint-card b {
   position: absolute;
   right: 12px;
@@ -3962,6 +3966,11 @@ body {
 .constraint-card.fail b {
   background: var(--r2-danger);
   color: white;
+}
+
+.constraint-card.warning b {
+  background: #ffca55;
+  color: #2a1800;
 }
 
 .alignment-card {
@@ -4135,6 +4144,10 @@ body {
   color: var(--r2-danger);
 }
 
+.dashboard-metric.warning .dashboard-metric-heading b {
+  color: #ffca55;
+}
+
 .dashboard-bar {
   position: relative;
   height: 8px;
@@ -4165,6 +4178,10 @@ body {
 
 .dashboard-metric.fail .dashboard-bar span {
   background: var(--r2-danger);
+}
+
+.dashboard-metric.warning .dashboard-bar span {
+  background: #ffca55;
 }
 
 .dashboard-bar i {

@@ -104,7 +104,7 @@ const ROUND2_PROJECT = {
   maxRobots: 12,
   performanceTarget: 70,
   strategyMismatchPenalty: 10,
-  performanceGapPenaltyMultiplier: 0.5,
+  performanceGapPenaltyMultiplier: 0.75,
   days: 5,
   schedulePenaltyPerDay: 5,
   budgetOverrunPenaltyMultiplier: 0.2,
@@ -1323,7 +1323,7 @@ function renderRound2ResourceEffects(resource) {
 
 function renderRound2Dashboard(metrics) {
   round2DashboardMetricsEl.innerHTML = [
-    renderDashboardMetric("Net Daily Capacity", `${formatNumber(metrics.netDailyCapacity)} Loads / Day`, "Target expected delivery capacity", metrics.capacityFeasible, metrics.netDailyCapacity, ROUND2_PROJECT.requiredDailyCapacity, "blue"),
+    renderDashboardMetric("Net Daily Capacity", `${formatNumber(metrics.netDailyCapacity)} Loads / Day`, "Time penalty below target", metrics.capacityFeasible ? "pass" : "warning", metrics.netDailyCapacity, ROUND2_PROJECT.requiredDailyCapacity, "blue"),
     renderDashboardMetric("Productivity", `${formatNumber(metrics.productivity)} /100`, "Performance target", metrics.productivityFeasible, metrics.productivity, ROUND2_PROJECT.performanceTarget, "purple"),
     renderDashboardMetric("Operational Safety", `${formatNumber(metrics.safety)} /100`, "Performance target", metrics.safetyFeasible, metrics.safety, ROUND2_PROJECT.performanceTarget, "blue"),
     renderDashboardMetric("Manual Effort Reduction", `${formatNumber(metrics.effort)} /100`, "Performance target", metrics.effortFeasible, metrics.effort, ROUND2_PROJECT.performanceTarget, "green"),
@@ -1332,12 +1332,13 @@ function renderRound2Dashboard(metrics) {
 }
 
 function renderDashboardMetric(label, value, helper, passed, current, target, color) {
+  const status = typeof passed === "string" ? passed : passed ? "pass" : "fail";
   const denominator = label === "Credits" ? target : 100;
   const marker = label === "Net Daily Capacity" || label === "Credits" ? target : ROUND2_PROJECT.performanceTarget;
   const fillPercent = Math.min(100, denominator > 0 ? (current / denominator) * 100 : 0);
   const markerPercent = Math.min(100, denominator > 0 ? (marker / denominator) * 100 : 0);
   return `
-    <article class="dashboard-metric ${color} ${passed ? "pass" : "fail"}">
+    <article class="dashboard-metric ${color} ${status}">
       <div class="dashboard-metric-icon" aria-hidden="true"></div>
       <div class="dashboard-metric-body">
         <div class="dashboard-metric-heading">
@@ -1355,7 +1356,7 @@ function renderDashboardMetric(label, value, helper, passed, current, target, co
 
 function renderRound2Constraints(metrics) {
   const constraints = [
-    ["Delivery Time", `≤ ${ROUND2_PROJECT.days} Days`, metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-", metrics.capacityFeasible],
+    ["Delivery Time", `≤ ${ROUND2_PROJECT.days} Days`, metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-", metrics.capacityFeasible ? "pass" : "warning"],
     ["Support", `≥ ${formatNumber(metrics.requiredSupport)} Support`, formatNumber(metrics.supportWorkerCapacity), metrics.supportFeasible],
     ["Budget Target", `Penalty above ${ROUND2_PROJECT.budgetLimit}`, formatNumber(metrics.totalCost), metrics.budgetFeasible],
     ["Productivity", `Target ${ROUND2_PROJECT.performanceTarget}`, formatNumber(metrics.productivity), metrics.productivityFeasible],
@@ -1363,14 +1364,17 @@ function renderRound2Constraints(metrics) {
     ["Manual Effort Reduction", `Target ${ROUND2_PROJECT.performanceTarget}`, formatNumber(metrics.effort), metrics.effortFeasible],
   ];
 
-  round2ConstraintsEl.innerHTML = constraints.map(([label, rule, value, passed]) => `
-    <article class="constraint-card ${passed ? "pass" : "fail"}">
+  round2ConstraintsEl.innerHTML = constraints.map(([label, rule, value, passed]) => {
+    const status = typeof passed === "string" ? passed : passed ? "pass" : "fail";
+    return `
+    <article class="constraint-card ${status}">
       <small>${label}</small>
       <span>${rule}</span>
       <strong>${value}</strong>
-      <b>${passed ? "✓" : "!"}</b>
+      <b>${status === "pass" ? "✓" : "!"}</b>
     </article>
-  `).join("");
+  `;
+  }).join("");
 }
 
 function renderRound2Alignment(metrics) {

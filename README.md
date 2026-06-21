@@ -59,7 +59,7 @@ Base Performance Score:
 Design Penalties:
 
 - Strategy Mismatch Penalty = `10` if the selected strategy does not match the actual resource pattern
-- Performance Weakness Penalty = `0.5 x total points below 70 across the three performance dimensions`
+- Performance Weakness Penalty = `0.75 x total points below 70 across the three performance dimensions`
 - Schedule Overrun Penalty = `5 x max(0, Estimated Duration - 5)`
 - Budget Overrun Penalty = `0.2 x max(0, Credits - 200)`
 - Final Value Score = `max(0, Base Performance Score - Total Design Penalty)`
