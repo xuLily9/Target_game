@@ -45,7 +45,7 @@ Budget and schedule overruns are allowed, but they add penalties:
 - Schedule Penalty = `max(0, Duration - 5) x 25`
 - Final Score Points = `Credits + Budget Penalty + Schedule Penalty`
 
-The Round 1 winner is the valid submitted solution with the lowest Final Score Points.
+The Round 1 winner is the valid submitted solution with the lowest Final Score Points. Ties go to the lower-credit solution.
 
 ### Round 2: Target Value Design
 

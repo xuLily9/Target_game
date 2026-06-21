@@ -2705,6 +2705,10 @@ button {
   color: var(--orange);
 }
 
+.total-cost.warning strong {
+  color: #ffca55;
+}
+
 .total-cost.fail strong {
   color: var(--danger);
 }
@@ -2748,6 +2752,10 @@ button {
 
 .support-card .duration-check.pass strong {
   color: var(--green);
+}
+
+.support-card .duration-check.warning strong {
+  color: #ffca55;
 }
 
 .support-card .duration-check.fail strong {

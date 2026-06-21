@@ -808,7 +808,7 @@ function renderResultCards(metrics) {
     </div>
   `;
 
-  costCardEl.className = `result-card total-cost ${metrics.budgetFeasible ? "pass" : "fail"}`;
+  costCardEl.className = `result-card total-cost ${metrics.budgetFeasible ? "pass" : "warning"}`;
   costCardEl.innerHTML = `
     <span class="result-icon coin-icon" aria-hidden="true"></span>
     <div>
@@ -825,7 +825,7 @@ function renderResultCards(metrics) {
       <strong>${metrics.supportFeasible ? "PASS" : "FAIL"}</strong>
       <p>Robot Support Workers provide ${formatNumber(metrics.supportWorkerCapacity)} support units; robots require ${formatNumber(metrics.requiredSupport)}.</p>
     </div>
-    <div class="duration-check ${metrics.scheduleFeasible ? "pass" : "fail"}">
+    <div class="duration-check ${metrics.scheduleFeasible ? "pass" : "warning"}">
       <small>Estimated Duration</small>
       <strong>${metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-"}</strong>
       <p>Project limit: ${PROJECT.days} Days | Penalty: ${formatNumber(metrics.schedulePenalty)}</p>
@@ -896,7 +896,7 @@ function renderRound1SummaryBoard() {
   round1SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 1",
     title: "Round 1 Submission Summary",
-    helper: "Lowest final score wins. Final score points = credits + budget penalty + schedule penalty.",
+    helper: "Lowest final score wins. Final score points = credits + budget penalty + schedule penalty; lower credits break ties.",
     submittedTeams,
     winner,
     columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Penalty", "Final Score (Points)", "Result"],
@@ -1029,13 +1029,21 @@ function renderRound2SummaryRow(team, winner) {
 function getRound1Winner(teams) {
   return teams
     .filter((team) => isRound1SubmissionValid(team.round1Submission.metrics))
-    .sort((a, b) => getRound1FinalScore(a) - getRound1FinalScore(b) || Number(a.teamId) - Number(b.teamId))[0] || null;
+    .sort((a, b) =>
+      getRound1FinalScore(a) - getRound1FinalScore(b) ||
+      getRound1TotalCost(a) - getRound1TotalCost(b) ||
+      Number(a.teamId) - Number(b.teamId)
+    )[0] || null;
 }
 
 function getRound1FinalScore(team) {
   const metrics = team.round1Submission.metrics;
   if (Number.isFinite(metrics.finalScore)) return metrics.finalScore;
   return metrics.totalCost + Number(metrics.budgetPenalty || 0) + Number(metrics.schedulePenalty || 0);
+}
+
+function getRound1TotalCost(team) {
+  return Number(team.round1Submission.metrics.totalCost || 0);
 }
 
 function isRound1SubmissionValid(metrics) {
