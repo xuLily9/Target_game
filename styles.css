@@ -2692,9 +2692,9 @@ button {
   color: var(--green);
 }
 
-.total-capacity.warning strong,
-.total-capacity.warning .capacity-target-value {
-  color: #ffca55;
+.total-capacity.fail strong,
+.total-capacity.fail .capacity-target-value {
+  color: var(--danger);
 }
 
 .total-capacity .minimum-fail {
@@ -2703,10 +2703,6 @@ button {
 
 .total-cost.pass strong {
   color: var(--orange);
-}
-
-.total-cost.warning strong {
-  color: #ffca55;
 }
 
 .total-cost.fail strong {
@@ -2752,10 +2748,6 @@ button {
 
 .support-card .duration-check.pass strong {
   color: var(--green);
-}
-
-.support-card .duration-check.warning strong {
-  color: #ffca55;
 }
 
 .support-card .duration-check.fail strong {

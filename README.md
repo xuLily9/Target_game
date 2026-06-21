@@ -33,17 +33,17 @@ Teams must pass these hard submission requirements:
 
 - Robot Support Check
 - Total Capacity > 0 units/day
+- Schedule Check: Estimated Duration <= 5 days
 
 Round 1 resource availability:
 
 - Max 20 human workers total, including skilled workers, construction material workers, and robot support workers
 - Max 12 robot/fleet units total, including delivery robots, quadruped robots, and multi-robot fleets
 
-Budget and schedule overruns are allowed, but they add penalties:
+Budget overruns are allowed, but they show as a failed budget check and add a penalty. Schedule overruns are not valid Round 1 submissions and cannot be submitted.
 
 - Budget Penalty = `max(0, Credits - 200) x 2`
-- Schedule Penalty = `max(0, Duration - 5) x 50`
-- Final Score Points = `Credits + Budget Penalty + Schedule Penalty`
+- Final Score Points = `Credits + Budget Penalty`
 
 The Round 1 winner is the valid submitted solution with the lowest Final Score Points. Ties go to the lower-credit solution.
 

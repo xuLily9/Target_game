@@ -9,7 +9,6 @@ const PROJECT = {
   requiredDailyCapacity: 20,
   budgetLimit: 200,
   budgetPenaltyMultiplier: 2,
-  schedulePenaltyPerDay: 50,
   maxHumanWorkers: 20,
   maxRobots: 12,
 };
@@ -296,6 +295,11 @@ confirmButton.addEventListener("click", () => {
   if (!metrics.capacityFeasible) {
     confirmationMessageEl.className = "confirmation-message fail";
     confirmationMessageEl.textContent = "Total Capacity must be greater than 0 Units / Day before final submission.";
+    return;
+  }
+  if (!metrics.scheduleFeasible) {
+    confirmationMessageEl.className = "confirmation-message fail";
+    confirmationMessageEl.textContent = "Schedule Check failed. Finish within 5 days before final submission.";
     return;
   }
   state.confirmed = true;
@@ -798,7 +802,7 @@ function renderSummaryRow(resource, quantity) {
 }
 
 function renderResultCards(metrics) {
-  capacityCardEl.className = `result-card total-capacity ${metrics.targetCapacityFeasible ? "pass" : "warning"}`;
+  capacityCardEl.className = `result-card total-capacity ${metrics.targetCapacityFeasible ? "pass" : "fail"}`;
   capacityCardEl.innerHTML = `
     <span class="result-icon gauge-icon" aria-hidden="true"></span>
     <div>
@@ -808,13 +812,13 @@ function renderResultCards(metrics) {
     </div>
   `;
 
-  costCardEl.className = `result-card total-cost ${metrics.budgetFeasible ? "pass" : "warning"}`;
+  costCardEl.className = `result-card total-cost ${metrics.budgetFeasible ? "pass" : "fail"}`;
   costCardEl.innerHTML = `
     <span class="result-icon coin-icon" aria-hidden="true"></span>
     <div>
       <small>Total Credits</small>
       <strong>${formatNumber(metrics.totalCost)} Credits</strong>
-      <p>Budget Limit: <b>200 Credits</b> | Penalty: <b>${formatNumber(metrics.budgetPenalty)}</b></p>
+      <p>Budget Limit: <b>200 Credits</b> | Status: <b>${metrics.budgetFeasible ? "PASS" : "FAIL"}</b></p>
     </div>
   `;
 
@@ -825,22 +829,21 @@ function renderResultCards(metrics) {
       <strong>${metrics.supportFeasible ? "PASS" : "FAIL"}</strong>
       <p>Robot Support Workers provide ${formatNumber(metrics.supportWorkerCapacity)} support units; robots require ${formatNumber(metrics.requiredSupport)}.</p>
     </div>
-    <div class="duration-check ${metrics.scheduleFeasible ? "pass" : "warning"}">
+    <div class="duration-check ${metrics.scheduleFeasible ? "pass" : "fail"}">
       <small>Estimated Duration</small>
       <strong>${metrics.estimatedDuration ? `${formatNumber(metrics.estimatedDuration)} Days` : "-"}</strong>
-      <p>Project limit: ${PROJECT.days} Days | Penalty: ${formatNumber(metrics.schedulePenalty)}</p>
+      <p>Project limit: ${PROJECT.days} Days | Status: <b>${metrics.scheduleFeasible ? "PASS" : "FAIL"}</b></p>
     </div>
   `;
 
-  const totalPenalty = metrics.budgetPenalty + metrics.schedulePenalty;
-  const scoreStatus = !metrics.round1Submittable ? "fail" : totalPenalty > 0 ? "warning" : "pass";
+  const scoreStatus = !metrics.round1Submittable ? "fail" : metrics.budgetFeasible ? "pass" : "warning";
   finalScoreCardEl.className = `result-card final-score-card ${scoreStatus}`;
   finalScoreCardEl.innerHTML = `
     <span class="result-icon score-icon" aria-hidden="true"></span>
     <div>
       <small>Final Score</small>
       <strong>${formatNumber(metrics.finalScore)} Points</strong>
-      <p>${formatNumber(metrics.totalCost)} credits + ${formatNumber(metrics.budgetPenalty)} budget penalty + ${formatNumber(metrics.schedulePenalty)} schedule penalty</p>
+      <p>${formatNumber(metrics.totalCost)} credits + ${formatNumber(metrics.budgetPenalty)} budget penalty</p>
     </div>
   `;
 }
@@ -896,10 +899,10 @@ function renderRound1SummaryBoard() {
   round1SummaryBoardEl.innerHTML = renderSubmissionBoard({
     roundLabel: "Round 1",
     title: "Round 1 Submission Summary",
-    helper: "Lowest final score wins. Final score points = credits + budget penalty + schedule penalty; lower credits break ties.",
+    helper: "Valid submissions must pass support, capacity, and schedule checks. Budget overrun is allowed with a penalty. Lowest final score wins; lower credits break ties.",
     submittedTeams,
     winner,
-    columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Penalty", "Final Score (Points)", "Result"],
+    columns: ["Team", "Selection", "Capacity", "Support", "Credits", "Budget", "Schedule", "Final Score (Points)", "Result"],
     rowRenderer: renderRound1SummaryRow,
   });
 }
@@ -990,9 +993,10 @@ function renderRound1SummaryRow(team, winner) {
   const metrics = submission.metrics;
   const isWinner = winner && String(winner.teamId) === String(team.teamId);
   const budgetPenalty = Number(metrics.budgetPenalty || 0);
-  const schedulePenalty = Number(metrics.schedulePenalty || 0);
-  const finalScore = Number.isFinite(metrics.finalScore) ? metrics.finalScore : metrics.totalCost + budgetPenalty + schedulePenalty;
+  const finalScore = Number.isFinite(metrics.finalScore) ? metrics.finalScore : Number(metrics.totalCost || 0) + budgetPenalty;
   const validSubmission = isRound1SubmissionValid(metrics);
+  const budgetFeasible = isRound1BudgetFeasible(metrics);
+  const scheduleFeasible = isRound1ScheduleFeasible(metrics);
   return `
     <tr class="${isWinner ? "winner" : ""}">
       <td><strong>${getTeamLabel(team)}</strong></td>
@@ -1000,7 +1004,8 @@ function renderRound1SummaryRow(team, winner) {
       <td>${formatNumber(metrics.totalCapacity)} Units/Day</td>
       <td>${formatNumber(metrics.supportWorkerCapacity)} / ${formatNumber(metrics.requiredSupport)}</td>
       <td>${formatNumber(metrics.totalCost)} Credits</td>
-      <td>${formatNumber(budgetPenalty + schedulePenalty)}</td>
+      <td><span class="${budgetFeasible ? "status-pass" : "status-fail"}">${budgetFeasible ? "PASS" : "FAIL"}</span></td>
+      <td><span class="${scheduleFeasible ? "status-pass" : "status-fail"}">${scheduleFeasible ? "PASS" : "FAIL"}</span></td>
       <td>${formatNumber(finalScore)}</td>
       <td>${isWinner ? "Winner" : validSubmission ? "Valid" : "Invalid"}</td>
     </tr>
@@ -1039,7 +1044,7 @@ function getRound1Winner(teams) {
 function getRound1FinalScore(team) {
   const metrics = team.round1Submission.metrics;
   if (Number.isFinite(metrics.finalScore)) return metrics.finalScore;
-  return metrics.totalCost + Number(metrics.budgetPenalty || 0) + Number(metrics.schedulePenalty || 0);
+  return Number(metrics.totalCost || 0) + Number(metrics.budgetPenalty || 0);
 }
 
 function getRound1TotalCost(team) {
@@ -1047,8 +1052,20 @@ function getRound1TotalCost(team) {
 }
 
 function isRound1SubmissionValid(metrics) {
-  if (typeof metrics.round1Submittable === "boolean") return metrics.round1Submittable;
-  return Boolean(metrics.supportFeasible && metrics.capacityFeasible);
+  const hardChecksPassed = Boolean(metrics.supportFeasible && metrics.capacityFeasible && isRound1ScheduleFeasible(metrics));
+  if (typeof metrics.round1Submittable === "boolean") return metrics.round1Submittable && hardChecksPassed;
+  return hardChecksPassed;
+}
+
+function isRound1BudgetFeasible(metrics) {
+  if (typeof metrics.budgetFeasible === "boolean") return metrics.budgetFeasible;
+  return Number(metrics.totalCost || 0) <= PROJECT.budgetLimit;
+}
+
+function isRound1ScheduleFeasible(metrics) {
+  if (typeof metrics.scheduleFeasible === "boolean") return metrics.scheduleFeasible;
+  const estimatedDuration = Number(metrics.estimatedDuration || 0);
+  return estimatedDuration > 0 && estimatedDuration <= PROJECT.days;
 }
 
 function getRound2Winner(teams) {
@@ -1094,9 +1111,9 @@ function evaluateRound() {
   const budgetOverrun = Math.max(0, totalCost - PROJECT.budgetLimit);
   const scheduleOverrun = Math.max(0, estimatedDuration - PROJECT.days);
   const budgetPenalty = budgetOverrun * PROJECT.budgetPenaltyMultiplier;
-  const schedulePenalty = scheduleOverrun * PROJECT.schedulePenaltyPerDay;
-  const finalScore = totalCost + budgetPenalty + schedulePenalty;
-  const round1Submittable = supportFeasible && capacityFeasible;
+  const schedulePenalty = 0;
+  const finalScore = totalCost + budgetPenalty;
+  const round1Submittable = supportFeasible && capacityFeasible && scheduleFeasible;
 
   return {
     humanCount,
