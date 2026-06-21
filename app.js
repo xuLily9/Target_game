@@ -330,6 +330,11 @@ confirmRound2Button?.addEventListener("click", () => {
     return;
   }
   const metrics = evaluateRound2();
+  if (!metrics.supportFeasible) {
+    round2ConfirmationEl.className = "confirmation-message fail";
+    round2ConfirmationEl.textContent = "Robot Support Check failed. Add enough robot support workers before submitting Round 2.";
+    return;
+  }
   state.round2.confirmed = true;
   saveRound2Submission(metrics);
   persistState();
@@ -1439,7 +1444,7 @@ function renderRound2Confirmation(metrics) {
       : "Round 2 final submission is recorded, but support or robot limit rules are not met."
     : metrics.eligible
       ? `Round 2 submitted successfully: final value ${formatNumber(metrics.finalValue)} after ${formatNumber(metrics.totalPenalty)} penalty points. Your final plan is now locked.`
-      : "Round 2 submitted. Support or robot limit rules are not met, so it will appear as Not eligible in the summary.";
+      : "Round 2 is not ready for final submission. Robot support and robot limit rules must pass.";
 }
 
 function evaluateRound2() {

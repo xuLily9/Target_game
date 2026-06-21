@@ -64,7 +64,7 @@ Design Penalties:
 - Budget Overrun Penalty = `0.2 x max(0, Credits - 200)`
 - Final Value Score = `max(0, Base Performance Score - Total Design Penalty)`
 
-The Round 2 time penalty is intentionally lighter than Round 1 because Round 2 focuses on HRC performance value. Support feasibility remains a visible rule check, while the robot/fleet limit is enforced by the resource selector. The Round 2 winner is the highest eligible Final Value Score. Ties go to the lower-credit solution.
+The Round 2 time penalty is intentionally lighter than Round 1 because Round 2 focuses on HRC performance value. Robot Support Check is a hard submission rule: teams cannot submit Round 2 if robot support demand exceeds available support workers. The robot/fleet limit is enforced by the resource selector. The Round 2 winner is the highest eligible Final Value Score. Ties go to the lower-credit solution.
 
 ## Files
 
