@@ -9,7 +9,7 @@ const PROJECT = {
   requiredDailyCapacity: 20,
   budgetLimit: 200,
   budgetPenaltyMultiplier: 2,
-  schedulePenaltyPerDay: 25,
+  schedulePenaltyPerDay: 50,
   maxHumanWorkers: 20,
   maxRobots: 12,
 };
