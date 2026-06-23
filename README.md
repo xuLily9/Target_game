@@ -5,7 +5,7 @@ Static browser-based workshop game for the **Human-Robot Collaboration Design Ch
 The prototype is now a construction material logistics Target Value Design game. Teams plan how to move materials from temporary storage to work zones on a high-rise construction project using workers, basic robots, advanced robots, and autonomous robot fleets.
 
 Live demo:
-[Open The Web Prototype](https://qiming0303.github.io/HRC_game/)
+[Open The Web Prototype](https://xulily9.github.io/Target_game/)
 
 ## Scenario
 
